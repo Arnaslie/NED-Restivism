@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStore, memoryBackend } from '../src/store/store.js';
 import { PBKDF2_ITERATIONS } from '../src/store/crypto.js';
+import { createTeam, summarize, makeSnapshot, acceptSummary } from '../src/team/model.js';
 
 const base = { date: '2026-09-22', dayPart: 'evening', type: 'meeting', durationMin: 60, intensity: 2 };
 
@@ -59,6 +60,47 @@ test('full lifecycle: setup, save, list, lock, wrong/right passphrase, purge, wi
   // After wipe a new passphrase can be set.
   assert.equal(await store.unlock('new pass'), true);
   assert.deepEqual(await store.list(), []);
+});
+
+test('team doc: round-trip, encrypted at rest, expired summary dropped, clear, wipe', async () => {
+  const backend = memoryBackend();
+  const store = createStore(backend);
+  const team = createTeam({ name: 'River', purpose: 'Look after each other', commitments: ['Rest'], pseudonym: 'Heron' });
+
+  await assert.rejects(store.getTeam(), /locked/);
+  await assert.rejects(store.saveTeam(team), /locked/);
+  await store.unlock('pw');
+  assert.equal(await store.getTeam(), null);
+  await assert.rejects(store.saveTeam({ ...team, extra: 1 }), /not allowed/);
+
+  const day = new Date(2026, 8, 24);
+  const withSummary = acceptSummary(team, summarize(team, [makeSnapshot(team, { level: 10, suggestCover: true }, day)], day), day);
+  await store.saveTeam(withSummary);
+  assert.deepEqual(await store.getTeam(day), withSummary);
+
+  const blob = backend._docs.get('team');
+  const text = Buffer.from(blob.ct).toString('latin1');
+  for (const s of ['Heron', 'River', 'Look after', team.key, team.id, '2026-09']) assert.ok(!text.includes(s), s);
+
+  // Wrong passphrase can't read it; right one can.
+  store.lock();
+  assert.equal(await store.unlock('nope'), false);
+  await assert.rejects(store.getTeam(), /locked/);
+  await store.unlock('pw');
+
+  // Expired summary is dropped on read, and on disk.
+  const later = new Date(2026, 8, 27);
+  assert.equal((await store.getTeam(later)).summary, null);
+  assert.equal((await store.getTeam(day)).summary, null);
+
+  await store.clearTeam();
+  assert.equal(await store.getTeam(), null);
+
+  await store.saveTeam(team);
+  await store.wipe();
+  assert.equal(backend._docs.size, 0);
+  await store.unlock('new');
+  assert.equal(await store.getTeam(), null);
 });
 
 test('purge(today) uses the given date', async () => {

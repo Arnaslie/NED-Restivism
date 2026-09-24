@@ -1,9 +1,11 @@
 // Thin IndexedDB backend for store.js. Holds only meta and encrypted blobs.
 
 const DB_NAME = 'rest-assured';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // v2 adds DOCS
 const META = 'meta';
 const RECORDS = 'records';
+const DOCS = 'docs';
+const STORES = [META, RECORDS, DOCS];
 const META_KEY = 'meta';
 
 let dbPromise = null;
@@ -19,9 +21,11 @@ function open() {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
       const r = indexedDB.open(DB_NAME, DB_VERSION);
+      // Create whatever is missing, so a v1 database upgrades in place.
       r.onupgradeneeded = () => {
-        r.result.createObjectStore(META);
-        r.result.createObjectStore(RECORDS);
+        for (const name of STORES) {
+          if (!r.result.objectStoreNames.contains(name)) r.result.createObjectStore(name);
+        }
       };
       r.onsuccess = () => {
         const db = r.result;
@@ -79,11 +83,23 @@ export const idbBackend = {
     });
   },
 
+  async getDoc(name) {
+    const db = await open();
+    return req(db.transaction(DOCS).objectStore(DOCS).get(name));
+  },
+
+  putDoc(name, blob) {
+    return tx([DOCS], 'readwrite', (t) => { t.objectStore(DOCS).put(blob, name); });
+  },
+
+  deleteDoc(name) {
+    return tx([DOCS], 'readwrite', (t) => { t.objectStore(DOCS).delete(name); });
+  },
+
   // Clear first so the data is gone even if deleteDatabase is blocked by another open tab.
   async destroy() {
-    await tx([META, RECORDS], 'readwrite', (t) => {
-      t.objectStore(META).clear();
-      t.objectStore(RECORDS).clear();
+    await tx(STORES, 'readwrite', (t) => {
+      for (const name of STORES) t.objectStore(name).clear();
     });
     const db = await dbPromise;
     db?.close();
