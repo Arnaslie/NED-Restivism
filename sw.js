@@ -3,7 +3,7 @@
 // visit even though the first visit loaded its modules before this worker controlled the page.
 
 // Bump CACHE whenever APP_SHELL or any shell file changes so old caches are cleaned up.
-const CACHE = 'app-v5';
+const CACHE = 'app-v6';
 
 // ---- APP_SHELL ------------------------------------------------------------
 // Every file the app needs offline. `node scripts/check-shell.mjs` fails CI if a
@@ -11,11 +11,11 @@ const CACHE = 'app-v5';
 // missing here, or if an entry here does not exist. Paths are relative to sw.js.
 const APP_SHELL = [
   './',
-  'index.html',
-  'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon.svg',
+  'index.html',
+  'manifest.webmanifest',
   'mock/activities.json',
   'src/app.js',
   'src/battery.js',
@@ -28,14 +28,22 @@ const APP_SHELL = [
   'src/store/record.js',
   'src/store/store.js',
   'src/styles.css',
+  'src/team/model.js',
   'src/ui/dates.js',
   'src/ui/dom.js',
   'src/ui/screens/home.js',
   'src/ui/screens/log.js',
   'src/ui/screens/recent.js',
   'src/ui/screens/settings.js',
+  'src/ui/screens/team.js',
   'src/ui/screens/unlock.js',
   'src/ui/strings/en.js',
+  'src/ui/team/code.js',
+  'src/ui/team/exchange.js',
+  'src/ui/team/home.js',
+  'src/ui/team/scanner.js',
+  'src/ui/team/session.js',
+  'src/ui/team/setup.js',
   'src/ui/view.js',
   'src/vendor/jsQR.js',
   'src/vendor/qrcodegen.js',
