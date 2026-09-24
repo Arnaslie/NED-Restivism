@@ -1,6 +1,6 @@
 # 0002. Personal energy "battery", computed and kept on-device only
 
-- Status: accepted
+- Status: accepted; sharing rule partly superseded by [0005](0005-teams-status-covenant.md)
 - Date: 2026-09-24
 - Amends: the concept brief's "no individual mood data, team-level pulse only"
 
