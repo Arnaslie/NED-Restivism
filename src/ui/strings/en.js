@@ -48,7 +48,9 @@ export default {
     coverHeading: 'Time to recharge',
     cover: 'Your battery is low. Consider asking a teammate to hold your role.',
     coverNote: 'Rest is part of the work, not a failure. Only you can see this.',
-    planReminder: (plan) => `Your plan: ${plan.when}, ${plan.then}`,
+    // Plans are saved without the form's "When…" / "I will…" labels; put them back, without doubling them.
+    planReminder: ({ when, then }) =>
+      `Your plan: when ${when.replace(/^when\s+/i, '').replace(/[.,]$/, '')}, I will ${then.replace(/^i(\s+will|'ll)\s+/i, '').replace(/\.$/, '')}.`,
     // Copy from docs/covenant-prompts.md ("Private rest-days line"). Never compare, never warn.
     restHeading: 'Your rest',
     restDays: (n) => `You had ${n} full rest ${n === 1 ? 'day' : 'days'} in the last 7 days. Rest is part of the work.`,
