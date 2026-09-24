@@ -1,0 +1,507 @@
+{
+  "_note": "SYNTHETIC DATA for development. Fictional user. Cortisol values are illustrative, not clinical.",
+  "records": [
+    {
+      "id": "5d9dc9f8-1818-4811-892f-902bd23f0824",
+      "v": 1,
+      "date": "2026-09-10",
+      "dayPart": "morning",
+      "type": "action",
+      "durationMin": 180,
+      "intensity": 3,
+      "selfCheck": 5
+    },
+    {
+      "id": "1738f7d9-3d9c-4724-91e2-0b8f6b0d549b",
+      "v": 1,
+      "date": "2026-09-10",
+      "dayPart": "afternoon",
+      "type": "action",
+      "durationMin": 180,
+      "intensity": 3
+    },
+    {
+      "id": "a170b338-3926-4059-b28c-105d1fb17c23",
+      "v": 1,
+      "date": "2026-09-10",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 300,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 25.8,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "1e27a1c0-8a6a-43ec-a4ed-e6a46b4cb242",
+      "v": 1,
+      "date": "2026-09-11",
+      "dayPart": "afternoon",
+      "type": "travel",
+      "durationMin": 180,
+      "intensity": 1,
+      "selfCheck": 3
+    },
+    {
+      "id": "1012f037-b64c-4422-8c38-fb2918f135d2",
+      "v": 1,
+      "date": "2026-09-11",
+      "dayPart": "evening",
+      "type": "travel",
+      "durationMin": 180,
+      "intensity": 1,
+      "selfCheck": 1
+    },
+    {
+      "id": "6d76b07e-881e-4162-ae2e-b1547f150524",
+      "v": 1,
+      "date": "2026-09-11",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 420,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 12.7,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "14f4733f-3e7d-4bfb-87a2-ea20b2f14c94",
+      "v": 1,
+      "date": "2026-09-12",
+      "dayPart": "morning",
+      "type": "travel",
+      "durationMin": 180,
+      "intensity": 2,
+      "selfCheck": 3
+    },
+    {
+      "id": "12bd4ace-faec-4d38-9be4-bcfc49b64a08",
+      "v": 1,
+      "date": "2026-09-12",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 300,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 13.1,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "13deef86-ab10-41d0-b646-e1f40a097c97",
+      "v": 1,
+      "date": "2026-09-13",
+      "dayPart": "morning",
+      "type": "support",
+      "durationMin": 180,
+      "intensity": 3
+    },
+    {
+      "id": "119a72d1-74c9-4f6a-8c01-1cdd9474031b",
+      "v": 1,
+      "date": "2026-09-13",
+      "dayPart": "evening",
+      "type": "support",
+      "durationMin": 30,
+      "intensity": 3
+    },
+    {
+      "id": "10a3d6b2-aa05-411a-b271-5945795e8229",
+      "v": 1,
+      "date": "2026-09-13",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 300,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 27.3,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "ab2cd31e-e315-4288-a2c3-3a4fb774eb52",
+      "v": 1,
+      "date": "2026-09-14",
+      "dayPart": "morning",
+      "type": "support",
+      "durationMin": 90,
+      "intensity": 3,
+      "selfCheck": 4
+    },
+    {
+      "id": "49952399-c4aa-4ac1-b7dc-76fb0f17a300",
+      "v": 1,
+      "date": "2026-09-14",
+      "dayPart": "afternoon",
+      "type": "action",
+      "durationMin": 60,
+      "intensity": 3
+    },
+    {
+      "id": "8ca81811-66d2-4876-b2fd-f2022a96fb1a",
+      "v": 1,
+      "date": "2026-09-14",
+      "dayPart": "evening",
+      "type": "support",
+      "durationMin": 90,
+      "intensity": 3
+    },
+    {
+      "id": "8cdb305f-dd2e-4609-ae36-aab0d1bc52d9",
+      "v": 1,
+      "date": "2026-09-14",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 420,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 27.1,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "153e7c2a-26a2-40bd-bb12-87fff52ddf5d",
+      "v": 1,
+      "date": "2026-09-15",
+      "dayPart": "morning",
+      "type": "rest",
+      "durationMin": 60,
+      "intensity": 1,
+      "selfCheck": 3
+    },
+    {
+      "id": "43435cc5-2eae-45cf-96d0-cc5fd4c28c2e",
+      "v": 1,
+      "date": "2026-09-15",
+      "dayPart": "afternoon",
+      "type": "rest",
+      "durationMin": 90,
+      "intensity": 1,
+      "selfCheck": 2
+    },
+    {
+      "id": "f341e07a-83f7-4f16-9bf4-a8b2b0c4312d",
+      "v": 1,
+      "date": "2026-09-15",
+      "dayPart": "evening",
+      "type": "admin",
+      "durationMin": 180,
+      "intensity": 1
+    },
+    {
+      "id": "e647cb8f-74e6-4a5d-8dd2-7a65bd628881",
+      "v": 1,
+      "date": "2026-09-15",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 480,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 12.0,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "fc132d0d-113d-417d-b0cb-c97d0fef7928",
+      "v": 1,
+      "date": "2026-09-16",
+      "dayPart": "morning",
+      "type": "rest",
+      "durationMin": 60,
+      "intensity": 1
+    },
+    {
+      "id": "895fd7b3-26b9-4c7f-9118-bb16000f49c8",
+      "v": 1,
+      "date": "2026-09-16",
+      "dayPart": "afternoon",
+      "type": "meeting",
+      "durationMin": 30,
+      "intensity": 2
+    },
+    {
+      "id": "a268aa87-2607-479d-a050-914a9d33a01c",
+      "v": 1,
+      "date": "2026-09-16",
+      "dayPart": "evening",
+      "type": "meeting",
+      "durationMin": 90,
+      "intensity": 2
+    },
+    {
+      "id": "1f7296ab-7961-4d92-9d39-d0a89a2ef80f",
+      "v": 1,
+      "date": "2026-09-16",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 300,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 16.5,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "1a28f7b3-24e4-425a-95fc-899e4fd58dbe",
+      "v": 1,
+      "date": "2026-09-17",
+      "dayPart": "morning",
+      "type": "rest",
+      "durationMin": 90,
+      "intensity": 1
+    },
+    {
+      "id": "873be078-f3b7-450d-b373-ca533488f876",
+      "v": 1,
+      "date": "2026-09-17",
+      "dayPart": "afternoon",
+      "type": "travel",
+      "durationMin": 90,
+      "intensity": 2,
+      "selfCheck": 4
+    },
+    {
+      "id": "fa7f0eab-4c4f-4b06-8732-2e25c215a82a",
+      "v": 1,
+      "date": "2026-09-17",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 300,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 15.0,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "8aa4248c-8857-49a4-b908-f227c59db916",
+      "v": 1,
+      "date": "2026-09-18",
+      "dayPart": "morning",
+      "type": "action",
+      "durationMin": 180,
+      "intensity": 3,
+      "selfCheck": 3
+    },
+    {
+      "id": "cda6c6fd-bd68-4167-a693-4036d17e4497",
+      "v": 1,
+      "date": "2026-09-18",
+      "dayPart": "afternoon",
+      "type": "action",
+      "durationMin": 60,
+      "intensity": 3,
+      "selfCheck": 4
+    },
+    {
+      "id": "42594052-78e4-498d-8787-f93bca44eb86",
+      "v": 1,
+      "date": "2026-09-18",
+      "dayPart": "evening",
+      "type": "action",
+      "durationMin": 60,
+      "intensity": 3
+    },
+    {
+      "id": "cefe2a1f-727d-4349-9822-cb77f4de2c08",
+      "v": 1,
+      "date": "2026-09-18",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 420,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 29.6,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "7b8f2ab5-3451-4013-9675-f6ad325b55dd",
+      "v": 1,
+      "date": "2026-09-19",
+      "dayPart": "morning",
+      "type": "travel",
+      "durationMin": 180,
+      "intensity": 1
+    },
+    {
+      "id": "ccb573d9-5810-460e-a729-91b9e8c14743",
+      "v": 1,
+      "date": "2026-09-19",
+      "dayPart": "afternoon",
+      "type": "meeting",
+      "durationMin": 30,
+      "intensity": 1
+    },
+    {
+      "id": "330698a1-c009-4492-b624-6771c8450070",
+      "v": 1,
+      "date": "2026-09-19",
+      "dayPart": "evening",
+      "type": "rest",
+      "durationMin": 120,
+      "intensity": 1
+    },
+    {
+      "id": "551fd8f9-a2c6-4e45-8a04-c79f6f15b6ad",
+      "v": 1,
+      "date": "2026-09-19",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 300,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 16.0,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "b98c67c2-15bd-448f-b261-49edbe4c5ce6",
+      "v": 1,
+      "date": "2026-09-20",
+      "dayPart": "morning",
+      "type": "rest",
+      "durationMin": 60,
+      "intensity": 1,
+      "selfCheck": 1
+    },
+    {
+      "id": "9c9011ef-256b-4df9-a7e6-529bce76e9f4",
+      "v": 1,
+      "date": "2026-09-20",
+      "dayPart": "afternoon",
+      "type": "rest",
+      "durationMin": 180,
+      "intensity": 1
+    },
+    {
+      "id": "057a40b2-2188-487e-8c5c-715f8c74fc1e",
+      "v": 1,
+      "date": "2026-09-20",
+      "dayPart": "evening",
+      "type": "admin",
+      "durationMin": 30,
+      "intensity": 1
+    },
+    {
+      "id": "86ce03f9-1a4f-44f9-a651-1445b9f3635c",
+      "v": 1,
+      "date": "2026-09-20",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 360,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 12.3,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "c38084a0-3d93-4d4c-804c-25d64affdcd1",
+      "v": 1,
+      "date": "2026-09-21",
+      "dayPart": "afternoon",
+      "type": "admin",
+      "durationMin": 180,
+      "intensity": 1,
+      "selfCheck": 3
+    },
+    {
+      "id": "e5cfedfa-5a91-46f0-bd6b-881ae8f6e0bd",
+      "v": 1,
+      "date": "2026-09-21",
+      "dayPart": "evening",
+      "type": "travel",
+      "durationMin": 120,
+      "intensity": 2
+    },
+    {
+      "id": "6bae4b5b-844a-4034-a77f-fe48d0a6ec17",
+      "v": 1,
+      "date": "2026-09-21",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 360,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 13.3,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "0101b811-9bca-4cb7-aee0-289dc6c91b92",
+      "v": 1,
+      "date": "2026-09-22",
+      "dayPart": "morning",
+      "type": "rest",
+      "durationMin": 60,
+      "intensity": 1,
+      "selfCheck": 2
+    },
+    {
+      "id": "87ddaeb7-84b2-4054-aead-44b0537390e5",
+      "v": 1,
+      "date": "2026-09-22",
+      "dayPart": "afternoon",
+      "type": "meeting",
+      "durationMin": 180,
+      "intensity": 2
+    },
+    {
+      "id": "3f9d52f9-0e8b-4c94-8f6f-915fe21b37ca",
+      "v": 1,
+      "date": "2026-09-22",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 360,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 10.8,
+        "source": "mock"
+      }
+    },
+    {
+      "id": "f92e2339-9cce-4098-935b-6a437178ba0a",
+      "v": 1,
+      "date": "2026-09-23",
+      "dayPart": "morning",
+      "type": "meeting",
+      "durationMin": 180,
+      "intensity": 2
+    },
+    {
+      "id": "7a609683-ceaf-4915-8885-64e88216858f",
+      "v": 1,
+      "date": "2026-09-23",
+      "dayPart": "afternoon",
+      "type": "admin",
+      "durationMin": 180,
+      "intensity": 1
+    },
+    {
+      "id": "6aa8b9e0-231b-4e14-b291-35bdd70a39d1",
+      "v": 1,
+      "date": "2026-09-23",
+      "dayPart": "evening",
+      "type": "admin",
+      "durationMin": 30,
+      "intensity": 1,
+      "selfCheck": 2
+    },
+    {
+      "id": "6da79a87-3d9a-4079-abd0-d7fb12926185",
+      "v": 1,
+      "date": "2026-09-23",
+      "dayPart": "night",
+      "type": "sleep",
+      "durationMin": 300,
+      "intensity": 1,
+      "biomarkers": {
+        "cortisolNmolL": 10.1,
+        "source": "mock"
+      }
+    }
+  ]
+}
