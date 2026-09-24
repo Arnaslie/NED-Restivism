@@ -1,6 +1,7 @@
 {
-  "name": "NED-Restivism",
-  "short_name": "NED",
+  "id": "./",
+  "name": "Rest Assured",
+  "short_name": "Rest Assured",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Service worker app shell is complete
+        run: node scripts/check-shell.mjs
+
+      - name: Syntax check sw.js and scripts
+        run: node --check sw.js && for f in scripts/*.mjs; do node --check "$f"; done
+
+      # `node --test test/` treats the directory as a module on Node 22+, so use a glob.
+      # Test files must be named *.test.js or *.test.mjs.
+      - name: Unit tests
+        run: |
+          if [ -d test ]; then
+            node --test 'test/**/*.test.js' 'test/**/*.test.mjs'
+          else
+            echo "No test/ directory, skipping."
+          fi
