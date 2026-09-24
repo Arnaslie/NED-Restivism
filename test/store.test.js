@@ -74,7 +74,7 @@ test('team doc: round-trip, encrypted at rest, expired summary dropped, clear, w
   await assert.rejects(store.saveTeam({ ...team, extra: 1 }), /not allowed/);
 
   const day = new Date(2026, 8, 24);
-  const withSummary = acceptSummary(team, summarize(team, [makeSnapshot(team, { level: 10, suggestCover: true }, day)], day), day);
+  const withSummary = acceptSummary(team, summarize(team, [makeSnapshot(team, { level: 10, suggestCover: true }, 'AAAAAAAAAAA')], 'AAAAAAAAAAA', day), day);
   await store.saveTeam(withSummary);
   assert.deepEqual(await store.getTeam(day), withSummary);
 

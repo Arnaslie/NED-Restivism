@@ -108,3 +108,14 @@ saveTeam(team) -> Promise<void>          // validates, encrypts, stores
 clearTeam()    -> Promise<void>
 ```
 Stored in a new IndexedDB store `docs` (database version 2; upgrade creates it if missing). `wipe()` clears it too.
+
+## Model notes (history)
+Behaviour of `src/team/model.js` beyond the signatures above:
+- **Validation** rejects unknown fields everywhere. Text lengths count characters (code points); control characters and blank required text are rejected. Ids, keys, nonces and `checkinId` must be base64url of the exact byte length.
+- **`summarize` throws `No check-ins for this team`** when no snapshot counts (all malformed, other team or other check-in). In normal use the runner's own snapshot is always included, so this signals a bug or a wrong-team scan.
+- `summarize` skips malformed snapshots silently, and copies fields into new objects, so the summary holds no reference to any snapshot.
+- `makeSnapshot` and `summarize` throw if `checkinId` isn't 8 bytes of base64url.
+- **`acceptSummary` caps `expires` at today + 2**: a summary from a phone whose clock is ahead is kept, but never past 48h on this phone.
+- `startFresh` also gives a new `memberId`; `me.pseudonym` and `me.shareStatus` carry over.
+- `suggestPseudonym` picks uniformly from the exported `PSEUDONYMS` list (60 nature words and objects; nothing political, religious, military or activist-coded, and no Zimbabwean party or leader symbols).
+- Extra exports: `validateCheckinStart(obj)` (kind `k` payload; `pub` must be a 65-byte uncompressed P-256 key), `validateSnapshot`, `validateSummary`, `PSEUDONYMS`, `LIMITS`, `toBase64url`, `fromBase64url`.
