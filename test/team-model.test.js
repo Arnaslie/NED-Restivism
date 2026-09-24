@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createTeam, validateTeam, teamCryptoKey, invitePayload, joinFromInvite, makeSnapshot, summarize,
-  acceptSummary, currentSummary, validateSnapshot, validateCheckinStart, startFresh, suggestPseudonym, PSEUDONYMS,
+  acceptSummary, currentSummary, validateSummary, validateSnapshot, validateCheckinStart, startFresh, suggestPseudonym, PSEUDONYMS,
   toBase64url, fromBase64url,
 } from '../src/team/model.js';
 
@@ -62,7 +62,7 @@ test('teamCryptoKey is a non-extractable AES-GCM key', async () => {
 
 test('invite + join keeps covenant, gets own identity, no summary', () => {
   const t = newTeam();
-  const leader = acceptSummary(t, summarize(t, [makeSnapshot(t, OK, CID)], CID, TODAY), TODAY);
+  const leader = acceptSummary(t, summarize(t, [makeSnapshot(t, OK, CID, false)], CID, TODAY), TODAY);
   const inv = invitePayload(leader);
   assert.deepEqual(Object.keys(inv).sort(), ['covenant', 'id', 'key', 'name', 'v']);
   const member = joinFromInvite(JSON.parse(JSON.stringify(inv)), 'Kestrel');
@@ -78,13 +78,18 @@ test('invite + join keeps covenant, gets own identity, no summary', () => {
 
 test('makeSnapshot carries only the low bit, share only when opted in', () => {
   const t = newTeam();
-  const s = makeSnapshot(t, LOW, CID);
-  assert.deepEqual(Object.keys(s).sort(), ['checkinId', 'low', 'nonce', 'teamId', 'v']);
+  const s = makeSnapshot(t, LOW, CID, false);
+  assert.deepEqual(Object.keys(s).sort(), ['checkinId', 'low', 'nonce', 'rested', 'teamId', 'v']);
+  assert.equal(s.rested, false);
+  assert.equal(makeSnapshot(t, LOW, CID, true).rested, true);
+  assert.throws(() => makeSnapshot(t, LOW, CID), /rested/);
+  assert.throws(() => makeSnapshot(t, LOW, CID, 'yes'), /rested/);
+  assert.throws(() => validateSnapshot({ ...s, rested: undefined }), /rested/);
   assert.equal(s.low, true);
   assert.equal(s.checkinId, CID);
-  assert.notEqual(makeSnapshot(t, LOW, CID).nonce, s.nonce);
-  assert.throws(() => makeSnapshot(t, LOW, 'short'), /checkinId/);
-  const shared = makeSnapshot(withShare(t, 'Heron'), OK, CID);
+  assert.notEqual(makeSnapshot(t, LOW, CID, false).nonce, s.nonce);
+  assert.throws(() => makeSnapshot(t, LOW, 'short', false), /checkinId/);
+  const shared = makeSnapshot(withShare(t, 'Heron'), OK, CID, false);
   assert.deepEqual(shared.share, { pseudonym: 'Heron', band: 'ok' });
   assert.equal(shared.low, false);
   assert.ok(!JSON.stringify(shared).includes('70'));
@@ -94,20 +99,20 @@ test('makeSnapshot carries only the low bit, share only when opted in', () => {
 test('summarize: dedupe, wrong team, wrong check-in, share-only statuses, expiry, no date', () => {
   const t = newTeam();
   const other = newTeam();
-  const a = makeSnapshot(withShare(t, 'Swift'), LOW, CID);
-  const b = makeSnapshot(t, LOW, CID);
-  const c = makeSnapshot(withShare(t, 'Heron'), OK, CID);
+  const a = makeSnapshot(withShare(t, 'Swift'), LOW, CID, true);
+  const b = makeSnapshot(t, LOW, CID, true);
+  const c = makeSnapshot(withShare(t, 'Heron'), OK, CID, false);
   const snaps = [
     a, b, c,
     { ...b },                                        // same nonce scanned twice
-    makeSnapshot(other, LOW, CID),                   // other team
-    makeSnapshot(t, LOW, newId()),                   // another check-in (e.g. replayed old status)
+    makeSnapshot(other, LOW, CID, false),                   // other team
+    makeSnapshot(t, LOW, newId(), false),                   // another check-in (e.g. replayed old status)
     { ...b, nonce: 'bad', low: 'yes' },              // malformed
     { ...b, nonce: newId(), date: '2026-09-24' },    // unknown field
   ];
   const s = summarize(t, snaps, CID, TODAY);
   assert.deepEqual(s, {
-    v: 1, teamId: t.id, expires: '2026-09-26', total: 3, low: 2,
+    v: 1, teamId: t.id, expires: '2026-09-26', total: 3, low: 2, rested: 2,
     statuses: [{ pseudonym: 'Heron', band: 'ok' }, { pseudonym: 'Swift', band: 'low' }],
   });
   // No reference to snapshot objects is kept.
@@ -118,17 +123,18 @@ test('summarize: dedupe, wrong team, wrong check-in, share-only statuses, expiry
 
 test('summarize hides low when fewer than 3 checked in', () => {
   const t = newTeam();
-  const s = summarize(t, [makeSnapshot(t, LOW, CID), makeSnapshot(withShare(t, 'Heron'), LOW, CID)], CID, TODAY);
+  const s = summarize(t, [makeSnapshot(t, LOW, CID, false), makeSnapshot(withShare(t, 'Heron'), LOW, CID, false)], CID, TODAY);
   assert.equal(s.total, 2);
   assert.equal(s.low, null);
+  assert.equal(s.rested, null);
   assert.deepEqual(s.statuses, [{ pseudonym: 'Heron', band: 'low' }]);
   assert.throws(() => summarize(t, [], CID, TODAY), /No check-ins/);
-  assert.throws(() => summarize(t, [makeSnapshot(t, LOW, newId())], CID, TODAY), /No check-ins/);
+  assert.throws(() => summarize(t, [makeSnapshot(t, LOW, newId(), false)], CID, TODAY), /No check-ins/);
 });
 
 test('acceptSummary rejects other team, expired, and tampered summaries', () => {
   const t = newTeam();
-  const s = summarize(t, [makeSnapshot(t, OK, CID)], CID, TODAY);
+  const s = summarize(t, [makeSnapshot(t, OK, CID, false)], CID, TODAY);
   const accepted = acceptSummary(t, s, TODAY);
   assert.deepEqual(accepted.summary, s);
   assert.equal(t.summary, null, 'input team not mutated');
@@ -146,7 +152,7 @@ test('acceptSummary rejects other team, expired, and tampered summaries', () => 
 test('currentSummary is null when missing or expired', () => {
   const t = newTeam();
   assert.equal(currentSummary(t, TODAY), null);
-  const withS = acceptSummary(t, summarize(t, [makeSnapshot(t, OK, CID)], CID, TODAY), TODAY);
+  const withS = acceptSummary(t, summarize(t, [makeSnapshot(t, OK, CID, false)], CID, TODAY), TODAY);
   assert.equal(currentSummary(withS, new Date(2026, 8, 26)).total, 1);
   assert.equal(currentSummary(withS, new Date(2026, 8, 27)), null);
 });
@@ -159,7 +165,7 @@ test('base64url round-trip', () => {
 
 test('startFresh keeps name, covenant and member settings, rotates id and key', () => {
   const base = withShare(newTeam(), 'Wren');
-  const t = acceptSummary(base, summarize(base, [makeSnapshot(base, OK, CID)], CID, TODAY), TODAY);
+  const t = acceptSummary(base, summarize(base, [makeSnapshot(base, OK, CID, false)], CID, TODAY), TODAY);
   const fresh = startFresh(t);
   assert.equal(fresh.name, t.name);
   assert.deepEqual(fresh.covenant, t.covenant);
@@ -171,7 +177,7 @@ test('startFresh keeps name, covenant and member settings, rotates id and key', 
   assert.notEqual(fresh.me.memberId, t.me.memberId);
   assert.equal(fresh.summary, null);
   // Old-team codes don't count in the new team.
-  assert.throws(() => summarize(fresh, [makeSnapshot(t, LOW, CID)], CID, TODAY), /No check-ins/);
+  assert.throws(() => summarize(fresh, [makeSnapshot(t, LOW, CID, false)], CID, TODAY), /No check-ins/);
 });
 
 test('suggestPseudonym picks from a neutral list of about 60 valid words', () => {
@@ -197,4 +203,20 @@ test('validateCheckinStart checks ids and P-256 public key', async () => {
   assert.throws(() => validateCheckinStart({ ...start, pub: toBase64url(new Uint8Array(33)) }), /65 bytes/);
   assert.throws(() => validateCheckinStart({ ...start, checkinId: t.id }), /checkinId/);
   assert.throws(() => validateCheckinStart({ ...start, extra: 1 }), /not allowed/);
+});
+
+test('summary rested count: validated, hidden below 3, never above total', () => {
+  const t = newTeam();
+  const snaps = [true, false, true, true].map((r) => makeSnapshot(t, OK, CID, r));
+  const s = summarize(t, snaps, CID, TODAY);
+  assert.equal(s.total, 4);
+  assert.equal(s.rested, 3);
+  assert.equal(s.low, 0);
+  const two = summarize(t, snaps.slice(0, 2), CID, TODAY);
+  assert.equal(two.rested, null);
+  assert.throws(() => validateSummary({ ...s, rested: 5 }), /rested/);
+  assert.throws(() => validateSummary({ ...s, rested: undefined }), /rested/);
+  assert.throws(() => validateSummary({ ...two, rested: 1 }), /hidden/);
+  const { rested, ...old } = s;
+  assert.throws(() => acceptSummary(t, old, TODAY), /rested/);
 });

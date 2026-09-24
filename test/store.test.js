@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStore, memoryBackend } from '../src/store/store.js';
-import { PBKDF2_ITERATIONS } from '../src/store/crypto.js';
+import { PBKDF2_ITERATIONS, deriveKey, encrypt } from '../src/store/crypto.js';
 import { createTeam, summarize, makeSnapshot, acceptSummary } from '../src/team/model.js';
 
 const base = { date: '2026-09-22', dayPart: 'evening', type: 'meeting', durationMin: 60, intensity: 2 };
@@ -74,7 +74,7 @@ test('team doc: round-trip, encrypted at rest, expired summary dropped, clear, w
   await assert.rejects(store.saveTeam({ ...team, extra: 1 }), /not allowed/);
 
   const day = new Date(2026, 8, 24);
-  const withSummary = acceptSummary(team, summarize(team, [makeSnapshot(team, { level: 10, suggestCover: true }, 'AAAAAAAAAAA')], 'AAAAAAAAAAA', day), day);
+  const withSummary = acceptSummary(team, summarize(team, [makeSnapshot(team, { level: 10, suggestCover: true }, 'AAAAAAAAAAA', true)], 'AAAAAAAAAAA', day), day);
   await store.saveTeam(withSummary);
   assert.deepEqual(await store.getTeam(day), withSummary);
 
@@ -101,6 +101,57 @@ test('team doc: round-trip, encrypted at rest, expired summary dropped, clear, w
   assert.equal(backend._docs.size, 0);
   await store.unlock('new');
   assert.equal(await store.getTeam(), null);
+});
+
+test('team with a summary in an older format: summary dropped, team kept', async () => {
+  const backend = memoryBackend();
+  const store = createStore(backend);
+  await store.unlock('pw');
+  const team = createTeam({ purpose: 'p', pseudonym: 'Heron' });
+  // A pre-0006 summary (no `rested`), as an earlier version would have stored it.
+  const old = { v: 1, teamId: team.id, expires: '2099-01-01', total: 3, low: 1, statuses: [] };
+  const meta = await backend.getMeta();
+  const key = await deriveKey('pw', meta.salt, meta.iterations);
+  backend._docs.set('team', await encrypt(key, { ...team, summary: old }));
+
+  assert.deepEqual(await store.getTeam(), team);
+  assert.deepEqual(await store.getTeam(), team, 'fixed on disk too');
+});
+
+test('plan: round-trip, validation, encrypted, survives clearTeam, removed by wipe', async () => {
+  const backend = memoryBackend();
+  const store = createStore(backend);
+  await assert.rejects(store.getPlan(), /locked/);
+  await store.unlock('pw');
+  assert.equal(await store.getPlan(), null);
+
+  await store.savePlan({ when: '  I get home after a long day ', then: 'I will make tea and sit outside' });
+  assert.deepEqual(await store.getPlan(), { when: 'I get home after a long day', then: 'I will make tea and sit outside' });
+
+  const bad = [
+    null, [], {}, { when: 'x' }, { when: '', then: 'x' }, { when: '   ', then: 'x' }, { when: 'x', then: 'y'.repeat(81) },
+    { when: 'a\nb', then: 'x' }, { when: 'x', then: 7 }, { when: 'x', then: 'y', notes: 'z' },
+  ];
+  for (const p of bad) await assert.rejects(store.savePlan(p), /Invalid plan/, JSON.stringify(p));
+  await store.savePlan({ when: 'é'.repeat(80), then: 'x' });
+
+  await store.savePlan({ when: 'Saturday comes', then: 'I will switch my phone off' });
+  const text = Buffer.from(backend._docs.get('plan').ct).toString('latin1');
+  assert.ok(!text.includes('Saturday') && !text.includes('phone'));
+
+  await store.saveTeam(createTeam({ purpose: 'p', pseudonym: 'Heron' }));
+  await store.clearTeam();
+  assert.equal(await store.getTeam(), null);
+  assert.deepEqual(await store.getPlan(), { when: 'Saturday comes', then: 'I will switch my phone off' });
+
+  await store.clearPlan();
+  assert.equal(await store.getPlan(), null);
+
+  await store.savePlan({ when: 'a', then: 'b' });
+  await store.wipe();
+  assert.equal(backend._docs.size, 0);
+  await store.unlock('new');
+  assert.equal(await store.getPlan(), null);
 });
 
 test('purge(today) uses the given date', async () => {

@@ -138,15 +138,17 @@ export function validateCheckinStart(s) {
 }
 
 export function validateSummary(s) {
-  checkObject(s, ['v', 'teamId', 'expires', 'total', 'low', 'statuses'], 'summary');
+  checkObject(s, ['v', 'teamId', 'expires', 'total', 'low', 'rested', 'statuses'], 'summary');
   checkVersion(s.v, 'summary');
   checkBytes(s.teamId, ID_BYTES, 'summary.teamId');
   checkDate(s.expires, 'summary.expires');
   if (!Number.isInteger(s.total) || s.total < 1 || s.total > LIMITS.members) fail(`summary.total must be 1–${LIMITS.members}`);
-  if (s.total < MIN_TOTAL_FOR_LOW) {
-    if (s.low !== null) fail('summary.low must be hidden when fewer than 3 checked in');
-  } else if (!Number.isInteger(s.low) || s.low < 0 || s.low > s.total) {
-    fail('summary.low must be 0–total');
+  for (const field of ['low', 'rested']) {
+    if (s.total < MIN_TOTAL_FOR_LOW) {
+      if (s[field] !== null) fail(`summary.${field} must be hidden when fewer than 3 checked in`);
+    } else if (!Number.isInteger(s[field]) || s[field] < 0 || s[field] > s.total) {
+      fail(`summary.${field} must be 0–total`);
+    }
   }
   if (!Array.isArray(s.statuses) || s.statuses.length > s.total) fail('summary.statuses must be a list no longer than total');
   s.statuses.forEach((st, i) => checkStatus(st, `summary.statuses[${i}]`));
@@ -154,12 +156,13 @@ export function validateSummary(s) {
 }
 
 export function validateSnapshot(s) {
-  checkObject(s, ['v', 'teamId', 'checkinId', 'nonce', 'low', 'share'], 'snapshot');
+  checkObject(s, ['v', 'teamId', 'checkinId', 'nonce', 'low', 'rested', 'share'], 'snapshot');
   checkVersion(s.v, 'snapshot');
   checkBytes(s.teamId, ID_BYTES, 'snapshot.teamId');
   checkBytes(s.checkinId, CHECKIN_ID_BYTES, 'snapshot.checkinId');
   checkBytes(s.nonce, NONCE_BYTES, 'snapshot.nonce');
   if (typeof s.low !== 'boolean') fail('snapshot.low must be true or false');
+  if (typeof s.rested !== 'boolean') fail('snapshot.rested must be true or false');
   if (s.share !== undefined) {
     checkStatus(s.share, 'snapshot.share');
     if ((s.share.band === 'low') !== s.low) fail('snapshot.share.band must match low');
@@ -251,10 +254,12 @@ export function suggestPseudonym() {
 }
 
 // battery = computeBattery(...) result; only its low/ok bit leaves the device.
-export function makeSnapshot(team, battery, checkinId) {
+// rested = restedThisWeek(...) from src/rest.js (decision 0006).
+export function makeSnapshot(team, battery, checkinId, rested) {
   checkBytes(checkinId, CHECKIN_ID_BYTES, 'checkinId');
+  if (typeof rested !== 'boolean') throw new Error('Invalid team data: rested must be true or false');
   const low = battery.suggestCover === true;
-  const snap = { v: TEAM_VERSION, teamId: team.id, checkinId, nonce: randomB64(NONCE_BYTES), low };
+  const snap = { v: TEAM_VERSION, teamId: team.id, checkinId, nonce: randomB64(NONCE_BYTES), low, rested };
   if (team.me.shareStatus) snap.share = { pseudonym: team.me.pseudonym, band: low ? 'low' : 'ok' };
   return snap;
 }
@@ -267,6 +272,7 @@ export function summarize(team, snapshots, checkinId, today = new Date()) {
   const seen = new Set();
   let total = 0;
   let low = 0;
+  let rested = 0;
   const statuses = [];
   for (const s of snapshots) {
     try {
@@ -278,6 +284,7 @@ export function summarize(team, snapshots, checkinId, today = new Date()) {
     seen.add(s.nonce);
     total += 1;
     if (s.low) low += 1;
+    if (s.rested) rested += 1;
     if (s.share) statuses.push({ pseudonym: s.share.pseudonym, band: s.share.band });
   }
   if (total === 0) throw new Error('No check-ins for this team');
@@ -290,6 +297,7 @@ export function summarize(team, snapshots, checkinId, today = new Date()) {
     expires: maxExpires(today),
     total,
     low: total < MIN_TOTAL_FOR_LOW ? null : low,
+    rested: total < MIN_TOTAL_FOR_LOW ? null : rested,
     statuses,
   };
 }

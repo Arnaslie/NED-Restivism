@@ -17,6 +17,26 @@ import { createRecord, validateRecord, compareRecords, isExpired } from './recor
 import { validateTeam, currentSummary } from '../team/model.js';
 
 const TEAM_DOC = 'team';
+const PLAN_DOC = 'plan';
+const PLAN_FIELD_MAX = 80;
+
+// Private if-then rest plan (decision 0006): { when, then }, each 1–80 characters.
+export function validatePlan(plan) {
+  if (plan === null || typeof plan !== 'object' || Array.isArray(plan)) throw new Error('Invalid plan: expected an object');
+  for (const key of Object.keys(plan)) {
+    if (key !== 'when' && key !== 'then') throw new Error(`Invalid plan: "${key}" is not allowed`);
+  }
+  const out = {};
+  for (const field of ['when', 'then']) {
+    const value = typeof plan[field] === 'string' ? plan[field].trim() : plan[field];
+    if (typeof value !== 'string') throw new Error(`Invalid plan: ${field} must be text`);
+    const len = [...value].length;
+    if (len < 1 || len > PLAN_FIELD_MAX) throw new Error(`Invalid plan: ${field} must be 1–${PLAN_FIELD_MAX} characters`);
+    if (/[\u0000-\u001f\u007f]/.test(value)) throw new Error(`Invalid plan: ${field} contains control characters`);
+    out[field] = value;
+  }
+  return out;
+}
 
 export function createStore(backend) {
   let key = null;
@@ -83,8 +103,20 @@ export function createStore(backend) {
     const k = requireKey();
     const blob = await backend.getDoc(TEAM_DOC);
     if (!blob) return null;
-    const team = validateTeam(await decrypt(k, blob));
-    if (team.summary && !currentSummary(team, today)) {
+    const stored = await decrypt(k, blob);
+    let team;
+    let dropSummary = false;
+    try {
+      team = validateTeam(stored);
+      dropSummary = team.summary !== null && !currentSummary(team, today);
+    } catch (err) {
+      // A summary saved in an older format (e.g. before `rested`) is dropped
+      // rather than locking the person out of their team.
+      if (!stored?.summary) throw err;
+      team = validateTeam({ ...stored, summary: null });
+      dropSummary = true;
+    }
+    if (dropSummary) {
       const fresh = { ...team, summary: null };
       await backend.putDoc(TEAM_DOC, await encrypt(k, fresh));
       return fresh;
@@ -103,12 +135,28 @@ export function createStore(backend) {
     await backend.deleteDoc(TEAM_DOC);
   }
 
+  async function getPlan() {
+    const k = requireKey();
+    const blob = await backend.getDoc(PLAN_DOC);
+    return blob ? validatePlan(await decrypt(k, blob)) : null;
+  }
+
+  async function savePlan(plan) {
+    const k = requireKey();
+    await backend.putDoc(PLAN_DOC, await encrypt(k, validatePlan(plan)));
+  }
+
+  async function clearPlan() {
+    requireKey();
+    await backend.deleteDoc(PLAN_DOC);
+  }
+
   async function wipe() {
     key = null;
     await backend.destroy();
   }
 
-  return { isSetUp, unlock, lock, isUnlocked, save, list, purge, getTeam, saveTeam, clearTeam, wipe };
+  return { isSetUp, unlock, lock, isUnlocked, save, list, purge, getTeam, saveTeam, clearTeam, getPlan, savePlan, clearPlan, wipe };
 }
 
 // In-memory backend for tests.

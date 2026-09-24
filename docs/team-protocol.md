@@ -129,3 +129,6 @@ Behaviour of `src/team/model.js` beyond the signatures above:
 - `startFresh` also gives a new `memberId`; `me.pseudonym` and `me.shareStatus` carry over.
 - `suggestPseudonym` picks uniformly from the exported `PSEUDONYMS` list (60 nature words and objects; nothing political, religious, military or activist-coded, and no Zimbabwean party or leader symbols).
 - Extra exports: `validateCheckinStart(obj)` (kind `k` payload; `pub` must be a 65-byte uncompressed P-256 key), `validateSnapshot`, `validateSummary`, `PSEUDONYMS`, `LIMITS`, `toBase64url`, `fromBase64url`.
+- **`rested` (0006)** is required: `makeSnapshot` throws without a boolean, and `summarize` skips snapshots without it (e.g. from a phone on an older version), so they don't count in `total` either. Summary `rested` follows the same rules as `low`: `null` when total < 3, else 0–total.
+- `getTeam` drops a stored summary it can no longer validate (e.g. saved before `rested` existed) instead of failing, and keeps the team.
+- Rest plan (`getPlan`/`savePlan`): `when` and `then` are trimmed, 1–80 characters, no control characters, no other fields. Stored as its own encrypted doc; `clearTeam()` leaves it, `wipe()` removes it.
