@@ -40,15 +40,16 @@ Check-in start (kind `k`, sealed with the team key):
 
 Status snapshot (kind `s`, sealed to the check-in — see wire format):
 ```js
-{ v: 1, teamId, checkinId, nonce: "base64url 8 bytes", low: true,
+{ v: 1, teamId, checkinId, nonce: "base64url 8 bytes", low: true, rested: true,
   share: { pseudonym: "Heron", band: "low" } }   // `share` only when me.shareStatus
+// rested = at least one full rest day in the last 7 days (decision 0006)
 ```
 `low` / `band` = battery level below 25 (same threshold as `suggestCover`). `band` is `"ok"` or `"low"`.
 
 Summary (kind `c`, sealed with the team key):
 ```js
 { v: 1, teamId, expires: "YYYY-MM-DD",       // check-in day + 2 days; no date stored (R6)
-  total: 5, low: 2,                           // low is null when total < 3; total ≤ 100
+  total: 5, low: 2, rested: 3,                // low and rested are null when total < 3; total ≤ 100
   statuses: [{ pseudonym: "Heron", band: "low" }] }   // sorted by pseudonym, length ≤ total
 ```
 
@@ -92,7 +93,7 @@ validateTeam(team)                  -> team                    // throws Error(r
 teamCryptoKey(team)                 -> Promise<CryptoKey>      // non-extractable AES-GCM from team.key
 invitePayload(team)                 -> { v, id, name, key, covenant }
 joinFromInvite(invite, pseudonym)   -> team                    // new memberId, shareStatus false, summary null
-makeSnapshot(team, battery, checkinId) -> snapshot             // battery = computeBattery(...) result
+makeSnapshot(team, battery, checkinId, rested) -> snapshot     // battery = computeBattery(...) result; rested = boolean
 summarize(team, snapshots, checkinId, today) -> summary       // ignores other teamIds/checkinIds, de-duplicates nonces,
                                                                // drops low when total < 3; expires = today + 2
 startFresh(team)                    -> team                    // same name/covenant/me, new id + key, summary null
@@ -101,11 +102,20 @@ acceptSummary(team, summary, today) -> team                    // rejects other 
 currentSummary(team, today)         -> summary | null          // null when missing or expired
 ```
 
+### `src/rest.js` — history (pure, decision 0006)
+```js
+fullRestDays(records, today) -> { thisWeek, lastWeek }   // days 0–6 back vs 7–13 back
+restedThisWeek(records, today) -> boolean                // thisWeek >= 1
+```
+
 ### `src/store/index.js` additions — history
 ```js
 getTeam()      -> Promise<team | null>   // throws if locked; drops an expired summary on read
 saveTeam(team) -> Promise<void>          // validates, encrypts, stores
 clearTeam()    -> Promise<void>
+getPlan()      -> Promise<{ when, then } | null>   // private if-then rest plan (0006); each 1–80 chars
+savePlan(plan) -> Promise<void>
+clearPlan()    -> Promise<void>
 ```
 Stored in a new IndexedDB store `docs` (database version 2; upgrade creates it if missing). `wipe()` clears it too.
 
