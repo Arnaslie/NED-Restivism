@@ -1,0 +1,17 @@
+:root {
+  color-scheme: light dark;
+  --accent: #1f6feb;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+}
+
+h1 {
+  color: var(--accent);
+}
