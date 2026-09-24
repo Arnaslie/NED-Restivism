@@ -25,7 +25,7 @@ function section(title, note, ...body) {
 export async function render(ctx) {
   const plan = await store.getPlan().catch(() => null);
   const planSection = section(
-    t.plan.heading,
+    t.plan.settingsHeading,
     t.plan.settingsNote,
     planForm({
       plan,
@@ -93,5 +93,6 @@ export async function render(ctx) {
     section(t.settings.lockHeading, t.settings.lockNote, lockButton),
     section(t.settings.demoHeading, t.settings.demoNote, demoButton),
     section(t.settings.wipeHeading, t.settings.wipeNote, wipeButton, confirmPanel),
+    h('p', { class: 'end-cue', text: t.end }),
   );
 }

@@ -36,7 +36,7 @@ export async function render() {
 
   screen.append(
     recent.length ? h('ul', { class: 'entries' }, recent.map(item)) : h('p', { text: t.recent.empty }),
-    h('p', { class: 'end-cue', text: recent.length ? t.recent.end : t.end }),
+    h('p', { class: 'end-cue', text: t.end }),
   );
   return screen;
 }

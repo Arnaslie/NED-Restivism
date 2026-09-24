@@ -29,7 +29,7 @@ function gauge(level) {
   );
 }
 
-const endCue = () => h('p', { class: 'end-cue', text: t.end });
+const endCue = (calm = false) => h('p', { class: 'end-cue', text: calm ? t.endCalm : t.end });
 
 export async function render(ctx) {
   const screen = h('section', { class: 'screen' }, heading(t.home.heading));
@@ -76,10 +76,11 @@ export async function render(ctx) {
       'section',
       { class: 'card rest', 'aria-labelledby': 'rest-heading' },
       h('h3', { id: 'rest-heading', text: t.home.restHeading }),
-      h('p', { text: thisWeek > 0 ? t.home.restDays(thisWeek, lastWeek) : t.home.restNone(lastWeek) }),
+      // Last week is mentioned only alongside rest already taken, never next to a zero.
+      h('p', { text: thisWeek > 0 ? [t.home.restDays(thisWeek), lastWeek > 0 && t.home.restWeekBefore(lastWeek)].filter(Boolean).join(' ') : t.home.restNone }),
       h('p', { class: 'hint', text: t.home.restDefinition }),
     ),
-    endCue(),
+    endCue(!suggestCover),
   );
   return screen;
 }

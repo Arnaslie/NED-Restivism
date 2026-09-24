@@ -1,17 +1,49 @@
 // Private if-then rest plan form (decision 0006). Used after starting/joining a team and in Settings.
+// Suggestions come first; writing your own is second, with a hint to keep it about yourself.
 import * as store from '../store/index.js';
 import t from './strings/en.js';
 import { h, errorBox, busy, nextId } from './dom.js';
 
 const MAX = 80;
+const SELF_WORDS = /^I('|’|$)/; // "I", "I'll", "I’m" … are not names
 
-function planField(label, placeholder, suggestions, value) {
+// Soft check only: digits (dates, times, numbers) or a capitalised word after the first
+// may be a name or place. Never blocks saving.
+function mightIdentify(text) {
+  if (/\d/.test(text)) return true;
+  return text
+    .split(/\s+/)
+    .slice(1)
+    .some((word) => /^\p{Lu}/u.test(word) && !SELF_WORDS.test(word));
+}
+
+function planField(label, suggestions, value) {
+  const p = t.plan;
   const id = nextId('plan');
-  const input = h('input', { id, type: 'text', maxlength: MAX, autocomplete: 'off', placeholder });
+  const hintId = `${id}-hint`;
+  const recheckId = `${id}-recheck`;
+  const input = h('input', { id, type: 'text', maxlength: MAX, autocomplete: 'off', 'aria-describedby': `${hintId} ${recheckId}` });
   input.value = value ?? '';
+  const recheck = h('p', { id: recheckId, class: 'hint recheck', 'aria-live': 'polite' });
+  const own = h(
+    'div',
+    { class: 'field', hidden: !value },
+    h('label', { for: id, text: label }),
+    h('p', { id: hintId, class: 'hint', text: p.ownHint }),
+    input,
+    recheck,
+  );
+
+  const check = () => {
+    recheck.textContent = mightIdentify(input.value) ? p.recheck : '';
+  };
+  input.addEventListener('input', check);
+  check();
+
+  const labelId = `${id}-group`;
   const chips = h(
     'div',
-    { class: 'chips', role: 'group', 'aria-label': `${label} ${t.plan.suggestions}` },
+    { class: 'chips', role: 'group', 'aria-labelledby': labelId },
     suggestions.map((text) =>
       h('button', {
         type: 'button',
@@ -19,14 +51,26 @@ function planField(label, placeholder, suggestions, value) {
         text,
         onclick: () => {
           input.value = text;
+          own.hidden = false;
+          check();
           input.focus();
         },
       }),
     ),
   );
+  const writeOwn = h('button', {
+    type: 'button',
+    class: 'link-button',
+    text: p.writeOwn,
+    onclick: () => {
+      own.hidden = false;
+      input.focus();
+    },
+  });
+
   return {
     input,
-    wrap: h('div', { class: 'field' }, h('label', { for: id, text: label }), input, h('p', { class: 'hint', text: t.plan.suggestions }), chips),
+    wrap: h('fieldset', { class: 'plain stack' }, h('legend', { id: labelId, text: label }), chips, writeOwn, own),
   };
 }
 
@@ -34,8 +78,8 @@ function planField(label, placeholder, suggestions, value) {
 // onSaved runs after a successful save.
 export function planForm({ plan, onSaved, secondary }) {
   const p = t.plan;
-  const when = planField(p.when, p.whenPlaceholder, p.whenSuggestions, plan?.when);
-  const then = planField(p.then, p.thenPlaceholder, p.thenSuggestions, plan?.then);
+  const when = planField(p.when, p.whenSuggestions, plan?.when);
+  const then = planField(p.then, p.thenSuggestions, plan?.then);
   const error = errorBox();
   const submit = h('button', { type: 'submit', class: 'primary', text: p.save });
 
@@ -65,6 +109,7 @@ export function planForm({ plan, onSaved, secondary }) {
 
   function fail(message, input) {
     error.textContent = message;
+    input.closest('[hidden]')?.removeAttribute('hidden');
     input.focus();
   }
 

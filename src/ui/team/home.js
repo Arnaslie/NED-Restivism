@@ -46,8 +46,11 @@ function twoStep({ label, text, confirmLabel, danger = false, onConfirm }) {
 }
 
 // Quiet fresh-start note after a check-in (decision 0006). No counters.
-export const freshStart = () =>
-  h('aside', { class: 'card fresh', 'aria-labelledby': 'fresh-heading' }, h('h3', { id: 'fresh-heading', text: t.team.home.freshStartHeading }), h('p', { text: t.team.home.freshStart }));
+export function freshStart() {
+  const messages = t.team.home.freshStarts;
+  const message = messages[Math.floor(Math.random() * messages.length)]; // rotate; never numbered
+  return h('aside', { class: 'card fresh', 'aria-labelledby': 'fresh-heading' }, h('h3', { id: 'fresh-heading', text: t.team.home.freshStartHeading }), h('p', { text: message }));
+}
 
 function summaryView(summary) {
   const s = t.team.home;
@@ -59,7 +62,10 @@ function summaryView(summary) {
   // Rest taken first (social norm), then who is running low. Both are hidden below 3 people.
   if (summary.low === null) card.append(h('p', { text: s.hiddenCount }));
   else {
-    if (typeof summary.rested === 'number') card.append(h('p', { class: 'summary-count', text: s.restedCount(summary.rested, summary.total) }));
+    // Lead with the rest norm only when at least half rested; otherwise a low count would teach
+    // "most of us don't rest", so show the aspiration instead.
+    const restedIsNorm = typeof summary.rested === 'number' && summary.rested * 2 >= summary.total;
+    card.append(h('p', { class: 'summary-count', text: restedIsNorm ? s.restedCount(summary.rested, summary.total) : s.restNorm }));
     card.append(h('p', { class: 'summary-count secondary', text: s.lowCount(summary.low, summary.total) }));
   }
   if (summary.low) card.append(h('p', { class: 'hint', text: s.lowNote }));
