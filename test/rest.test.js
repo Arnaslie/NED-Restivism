@@ -56,6 +56,6 @@ test('uses the local date of today, across a month boundary', () => {
 
 test('mock data', () => {
   const { records } = JSON.parse(readFileSync(new URL('../mock/activities.json', import.meta.url)));
-  // Sep 20 is rest + admin; Sep 15 rest + admin; no full rest day in either week.
-  assert.deepEqual(fullRestDays(records, new Date(2026, 8, 24)), { thisWeek: 0, lastWeek: 0 });
+  // Sep 20 and Sep 15 are full rest days (rest + sleep only): one in each week.
+  assert.deepEqual(fullRestDays(records, new Date(2026, 8, 24)), { thisWeek: 1, lastWeek: 1 });
 });

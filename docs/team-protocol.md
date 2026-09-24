@@ -4,9 +4,9 @@ Contract for [decision 0005](decisions/0005-teams-status-covenant.md). History, 
 
 ## Flows
 
-**Create** — Leader enters an optional team name, the covenant (purpose + up to 5 commitments) and their own pseudonym. The app creates a random team id and a random 256-bit team key.
+**Create** — The person starting the team enters an optional team name, the covenant (purpose + up to 5 commitments) and their own pseudonym. The app creates a random team id and a random 256-bit team key.
 
-**Invite** (in person) — Leader taps *Invite*: the app makes a join code (e.g. `7KQ2-M9XD-4T`) and shows the invite QR. The leader reads the code aloud. The newcomer scans, types the code, reads the covenant, ticks *We agree*, picks a pseudonym, joins.
+**Invite** (in person) — Any member taps *Invite*: the app makes a join code (e.g. `7KQ2-M9XD-4T`) and shows the invite QR. They read the code aloud. The newcomer scans, types the code, reads the covenant, ticks *We agree*, picks a pseudonym, joins.
 
 **Check-in** (in person) — The person running it (anyone) taps *Run check-in*. Their phone creates a one-time key pair and shows the **start QR**. Each member scans it, and their phone shows a **status QR sealed to that one check-in**: only the runner's phone can open it, so other members photographing it learn nothing. The runner scans each status QR, then taps *Finish*: their phone adds its own status, builds the summary, deletes the one-time private key and the individual snapshots, and shows the **summary QR**. Everyone scans it.
 

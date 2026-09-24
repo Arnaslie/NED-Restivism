@@ -186,7 +186,7 @@
       "v": 1,
       "date": "2026-09-15",
       "dayPart": "evening",
-      "type": "admin",
+      "type": "rest",
       "durationMin": 180,
       "intensity": 1
     },
@@ -381,7 +381,7 @@
       "v": 1,
       "date": "2026-09-20",
       "dayPart": "evening",
-      "type": "admin",
+      "type": "rest",
       "durationMin": 30,
       "intensity": 1
     },
