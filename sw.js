@@ -3,7 +3,7 @@
 // visit even though the first visit loaded its modules before this worker controlled the page.
 
 // Bump CACHE whenever APP_SHELL or any shell file changes so old caches are cleaned up.
-const CACHE = 'app-v6';
+const CACHE = 'app-v7';
 
 // ---- APP_SHELL ------------------------------------------------------------
 // Every file the app needs offline. `node scripts/check-shell.mjs` fails CI if a
@@ -19,6 +19,7 @@ const APP_SHELL = [
   'mock/activities.json',
   'src/app.js',
   'src/battery.js',
+  'src/rest.js',
   'src/share/codec.js',
   'src/share/qr.js',
   'src/share/scan.js',
@@ -31,6 +32,7 @@ const APP_SHELL = [
   'src/team/model.js',
   'src/ui/dates.js',
   'src/ui/dom.js',
+  'src/ui/plan.js',
   'src/ui/screens/home.js',
   'src/ui/screens/log.js',
   'src/ui/screens/recent.js',
