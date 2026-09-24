@@ -34,6 +34,9 @@ export async function render() {
     .filter((r) => r.date >= since)
     .sort((a, b) => b.date.localeCompare(a.date) || DAY_PART_ORDER[b.dayPart] - DAY_PART_ORDER[a.dayPart]);
 
-  screen.append(recent.length ? h('ul', { class: 'entries' }, recent.map(item)) : h('p', { text: t.recent.empty }));
+  screen.append(
+    recent.length ? h('ul', { class: 'entries' }, recent.map(item)) : h('p', { text: t.recent.empty }),
+    h('p', { class: 'end-cue', text: recent.length ? t.recent.end : t.end }),
+  );
   return screen;
 }

@@ -48,6 +48,15 @@ export default {
     coverHeading: 'Time to recharge',
     cover: 'Your battery is low. Consider asking a teammate to hold your role.',
     coverNote: 'Rest is part of the work, not a failure. Only you can see this.',
+    planReminder: (plan) => `Your plan: ${plan.when}, ${plan.then}`,
+    restHeading: 'Rest this week',
+    restDays: (n, last) =>
+      `Full rest days: ${n} this week (${last} last week). Is there another you could plan?`,
+    restNone: (last) =>
+      last > 0
+        ? `No full rest day yet this week (${last} last week) — is there one you could plan?`
+        : 'No full rest day yet this week — is there one you could plan?',
+    restDefinition: 'A full rest day is a day with rest and no work. Only you can see this.',
     loadError: 'Could not load your entries.',
   },
 
@@ -63,7 +72,7 @@ export default {
     selfCheckSkip: 'Skip',
     submit: 'Save',
     busy: 'Saving…',
-    saved: 'Saved.',
+    saved: "Saved. That's all for now.",
     genericError: 'Could not save this entry.',
     typeRequired: 'Choose an activity.',
   },
@@ -74,6 +83,7 @@ export default {
     empty: 'No entries in the last 14 days.',
     selfCheck: (n) => `Feeling ${n}/5`,
     loadError: 'Could not load your entries.',
+    end: "That's everything from the last 14 days.",
   },
 
   settings: {
@@ -98,6 +108,40 @@ export default {
     wiped: 'Everything was deleted.',
     wipeError: 'Could not delete. Try again.',
   },
+
+  plan: {
+    heading: 'Your rest plan',
+    intro: 'Private — never shared. Decide now what you will do later, so rest is easier to take when you need it.',
+    when: 'When…',
+    then: 'I will…',
+    whenPlaceholder: "When I've had two heavy days in a row",
+    thenPlaceholder: "I'll take the next morning off",
+    suggestions: 'Tap to use:',
+    whenSuggestions: [
+      "When I've had two heavy days in a row",
+      'When my battery is running low',
+      'When I feel drained at the end of the day',
+      "When I haven't had a full rest day this week",
+    ],
+    thenSuggestions: [
+      "I'll take the next morning off",
+      "I'll ask someone to cover for me",
+      "I'll go to bed early and leave my phone in another room",
+      "I'll plan a full rest day this week",
+    ],
+    whenRequired: 'Write when your plan starts.',
+    thenRequired: 'Write what you will do.',
+    save: 'Save plan',
+    busy: 'Saving…',
+    skip: 'Skip for now',
+    remove: 'Remove plan',
+    saved: 'Plan saved.',
+    removed: 'Plan removed.',
+    error: 'Could not save your plan.',
+    settingsNote: 'Shown on your Battery screen when your battery is low. Private — never shared.',
+  },
+
+  end: "That's all for now.",
 
   team: {
     heading: 'Team',
@@ -170,7 +214,10 @@ export default {
       covenant: 'Our covenant',
       summaryHeading: 'Latest check-in',
       noSummary: 'No recent check-in. Run one together to see how the team is doing.',
+      restedCount: (rested, total) => `${rested} of ${total} of us took a full rest day this week`,
       lowCount: (low, total) => `${low} of ${total} of us are running low`,
+      freshStartHeading: 'A fresh start',
+      freshStart: 'Whatever last week looked like, this week can hold some rest. Look after each other.',
       hiddenCount: 'Fewer than 3 people checked in, so the team total stays hidden.',
       clearsAfter: (expires) => `Clears after ${expires}`,
       lowNote: 'Running low is a signal to share the load, not a failure.',
@@ -227,7 +274,7 @@ export default {
       scanStart: 'Scan the check-in code on the phone running it.',
       notStart: 'That is not a check-in code from this team.',
       statusIntro: 'Show this to the phone running the check-in. Only that phone can read it.',
-      contains: 'It says only whether you are running low.',
+      contains: 'It says only whether you are running low and whether you had a full rest day this week.',
       containsShared: (pseudonym) => `Because you share your status, it also shows "${pseudonym}" with "okay" or "running low".`,
       never: 'It never contains your battery level or activities.',
       next: 'Scan summary',
@@ -269,11 +316,11 @@ export default {
   },
 
   types: {
-    action: 'Action',
+    action: 'Outreach',
     meeting: 'Meeting',
     travel: 'Travel',
     support: 'Support',
-    admin: 'Admin',
+    admin: 'Paperwork',
     rest: 'Rest',
     sleep: 'Sleep',
   },

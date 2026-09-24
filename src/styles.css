@@ -654,3 +654,51 @@ h4 {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Humane design (decision 0006) */
+
+.end-cue {
+  margin: 24px 0 8px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.end-cue::before {
+  content: '';
+  display: block;
+  width: 48px;
+  margin: 0 auto 16px;
+  border-top: 1px solid var(--border);
+}
+
+.summary-count.secondary {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.plan-reminder {
+  font-weight: 600;
+}
+
+.rest,
+.fresh {
+  border-left: 4px solid var(--accent);
+}
+
+.rest {
+  margin-top: 16px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  text-align: left;
+}

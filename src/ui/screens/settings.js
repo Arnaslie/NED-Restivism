@@ -2,6 +2,7 @@
 import * as store from '../../store/index.js';
 import t from '../strings/en.js';
 import { h, heading, busy } from '../dom.js';
+import { planForm } from '../plan.js';
 import { toDay, addDays, daysBetween } from '../dates.js';
 
 // Shift the mock records so the newest lands on yesterday, then save them as new records.
@@ -22,6 +23,29 @@ function section(title, note, ...body) {
 }
 
 export async function render(ctx) {
+  const plan = await store.getPlan().catch(() => null);
+  const planSection = section(
+    t.plan.heading,
+    t.plan.settingsNote,
+    planForm({
+      plan,
+      onSaved: () => ctx.announce(t.plan.saved),
+      secondary: plan && {
+        label: t.plan.remove,
+        onClick: async () => {
+          try {
+            await store.clearPlan();
+          } catch {
+            ctx.announce(t.plan.error);
+            return;
+          }
+          ctx.announce(t.plan.removed);
+          ctx.go('settings');
+        },
+      },
+    }),
+  );
+
   const lockButton = h('button', { type: 'button', text: t.settings.lock, onclick: () => ctx.lockNow() });
 
   const demoButton = h('button', { type: 'button', text: t.settings.demo });
@@ -65,6 +89,7 @@ export async function render(ctx) {
     'section',
     { class: 'screen stack' },
     heading(t.settings.heading),
+    planSection,
     section(t.settings.lockHeading, t.settings.lockNote, lockButton),
     section(t.settings.demoHeading, t.settings.demoNote, demoButton),
     section(t.settings.wipeHeading, t.settings.wipeNote, wipeButton, confirmPanel),

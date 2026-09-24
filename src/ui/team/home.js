@@ -45,6 +45,10 @@ function twoStep({ label, text, confirmLabel, danger = false, onConfirm }) {
   return [trigger, panel];
 }
 
+// Quiet fresh-start note after a check-in (decision 0006). No counters.
+export const freshStart = () =>
+  h('aside', { class: 'card fresh', 'aria-labelledby': 'fresh-heading' }, h('h3', { id: 'fresh-heading', text: t.team.home.freshStartHeading }), h('p', { text: t.team.home.freshStart }));
+
 function summaryView(summary) {
   const s = t.team.home;
   const card = h('section', { class: 'card stack', 'aria-labelledby': 'summary-heading' }, h('h3', { id: 'summary-heading', text: s.summaryHeading }));
@@ -52,7 +56,12 @@ function summaryView(summary) {
     card.append(h('p', { text: s.noSummary }));
     return card;
   }
-  card.append(summary.low === null ? h('p', { text: s.hiddenCount }) : h('p', { class: 'summary-count', text: s.lowCount(summary.low, summary.total) }));
+  // Rest taken first (social norm), then who is running low. Both are hidden below 3 people.
+  if (summary.low === null) card.append(h('p', { text: s.hiddenCount }));
+  else {
+    if (typeof summary.rested === 'number') card.append(h('p', { class: 'summary-count', text: s.restedCount(summary.rested, summary.total) }));
+    card.append(h('p', { class: 'summary-count secondary', text: s.lowCount(summary.low, summary.total) }));
+  }
   if (summary.low) card.append(h('p', { class: 'hint', text: s.lowNote }));
   if (summary.statuses.length) {
     // Alphabetical, so the order says nothing about who was scanned when.
@@ -139,7 +148,7 @@ function settingsSection(api) {
   );
 }
 
-export async function home(api) {
+export async function home(api, arg) {
   const s = t.team.home;
   const { team } = api;
   // Some views do slow crypto before they appear (key pairs, the invite's key derivation), so show a busy state.
@@ -153,6 +162,7 @@ export async function home(api) {
     'section',
     { class: 'screen stack' },
     heading(team.name || s.unnamed),
+    arg?.fresh && freshStart(),
     h('details', { class: 'card' }, h('summary', { text: s.covenant }), covenantView(team.covenant)),
     summaryView(currentSummary(team, new Date())),
     h(
@@ -166,5 +176,6 @@ export async function home(api) {
     ),
     shareSection(api),
     settingsSection(api),
+    h('p', { class: 'end-cue', text: t.end }),
   );
 }
