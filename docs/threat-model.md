@@ -148,25 +148,25 @@ Reviews [0005](decisions/0005-teams-status-covenant.md) and [team-protocol.md](t
 | The fact a group met | Summary `date`, the check-in itself | Anyone with an unlocked phone; anyone watching the room |
 
 ### Threats and mitigations
-Status as in the table above; **recommended** = proposed here, not yet agreed.
+Status as in the table above; **recommended** = proposed here, not yet agreed. Update (round 3): the protocol has since adopted R1, R2, R4, R6, R7, R8, R9 and R10; R3 and R5 are still open.
 
 | # | Threat | Mitigation | Status |
 |---|---|---|---|
 | T1 | Member phone seized and unlocked (coerced) | Summary expires after 48h; no history of past check-ins; team doc encrypted at rest; panic wipe clears `docs` store | planned (0005, protocol) |
-| T2 | …and the key on it decrypts QR photos taken before or after (CCTV, a phone camera at a check-in) | None in v1: key is static. See R1 (status forward secrecy) and R2 (start-fresh rotation) | **gap** |
+| T2 | …and the key on it decrypts QR photos taken before or after (CCTV, a phone camera at a check-in) | Statuses forward-secret (R1); *Start fresh* rotation (R2) | partial — R1 and R2 adopted in protocol; summaries still readable with a later-obtained key until Start fresh |
 | T3 | Infiltrator joins | Joining needs physical presence + spoken code; covenant as a social gate. An infiltrator then sees summaries and opted-in bands — never levels, activities or schedules | planned (0005) |
-| T4 | Infiltrator (or any member) photographs status QRs and reads everyone's `low` bit, including people who did not opt in | None: status QRs are sealed with the team key everyone holds | **gap — R1** |
+| T4 | Infiltrator (or any member) photographs status QRs and reads everyone's `low` bit, including people who did not opt in | Status QRs sealed to a one-time check-in key only the runner holds (protocol `s` kind) | planned — fixed by R1 (adopted in protocol) |
 | T5 | Invite QR photographed | Sealed with ~50-bit join code, PBKDF2 600k: offline guessing infeasible | planned (protocol) |
 | T6 | Invite QR photographed **and** code overheard | Equals handing over the team key forever. Mitigate by R4 (short display, one invite per person) | partial |
-| T7 | Person who left, or was removed, keeps the key | None in v1 ("rotation → future decision") | **gap — R2** |
+| T7 | Person who left, or was removed, keeps the key | *Start fresh*: new id and key, re-invite in person | partial — R2 *Start fresh* adopted (`startFresh`); relies on people using it |
 | T8 | Check-in runner sees each member's `low` bit | Accepted in 0005 ("same as asking out loud"); snapshots discarded after Finish | accepted |
-| T9 | Small-group aggregate reveals individuals. At total = 3, low = 0 or 3 tells everyone each person's state; two check-ins on one day with different people reveal the difference | Hidden when total < 3 | partial — R3 |
-| T10 | Team size and meeting date on a seized phone (`total`, `date`, `expires`) prove a group of N met on a given day | 48h expiry | residual — R6 |
+| T9 | Small-group aggregate reveals individuals. At total = 3, low = 0 or 3 tells everyone each person's state; two check-ins on one day with different people reveal the difference | Hidden when total < 3 | partial — R3 **not yet adopted** (threshold still 3) |
+| T10 | Team size and meeting date on a seized phone (`total`, `date`, `expires`) prove a group of N met on a given day | 48h expiry | partial — R6 adopted (no `date` stored); `total` and `expires` remain |
 | T11 | Covenant / team name typed in activist terms is the most incriminating text on the phone, kept indefinitely on every member phone | None in protocol (free text, ≤200 / ≤80 chars) | **gap — R5** |
-| T12 | Pseudonyms chosen as real names or known nicknames | None | **gap — R7** |
-| T13 | Paste fallback moves codes into WhatsApp/SMS/clipboard history, where any key holder can read them long after 48h (expiry is only enforced by our app) | Neutral prefixes (`j1`/`s1`/`c1`), no app name in QR text | partial — R8 |
+| T12 | Pseudonyms chosen as real names or known nicknames | None | planned — R7 adopted (`suggestPseudonym`) |
+| T13 | Paste fallback moves codes into WhatsApp/SMS/clipboard history, where any key holder can read them long after 48h (expiry is only enforced by our app) | Neutral prefixes (`j1`/`s1`/`c1`), no app name in QR text | planned — R8 adopted, stricter: no copy, share or paste at all |
 | T14 | Key holder forges a summary or stuffs a check-in with extra snapshots | Nonce de-duplication, teamId + date checks | residual (integrity, low harm) — runner sees scan count vs people in the room |
-| T15 | UI labels one person as "leader"/"admin", marking the organiser on their phone | Protocol stores no role; only UI wording matters | **recommended** — R9 |
+| T15 | UI labels one person as "leader"/"admin", marking the organiser on their phone | Protocol stores no role; only UI wording matters | planned — R9 adopted in protocol UI rules (verify wording in `src/ui`: protocol text itself still says "Leader") |
 
 ### Recommended protocol changes before shipping
 In priority order. None rewrites the protocol file; owners decide.
@@ -191,6 +191,23 @@ In priority order. None rewrites the protocol file; owners decide.
 - **Forged or stuffed summaries** from a key holder can mislead the team (T14).
 - **PBKDF2 600k on low-end phones** may take several seconds per join **(verify timing on a target phone)**.
 
+## Humane design (0006)
+Reviews [0006](decisions/0006-humane-design-patterns.md). Two new pieces of data; the rest (closing lines, fresh starts, the private rest-days line) adds no stored data. The rest-days count is derived from the existing 14-day records.
+
+| # | Threat | Mitigation | Status |
+|---|---|---|---|
+| H1 | New `rested` bit (≥ 1 full rest day in last 7) shows who has *not* stopped working all week: the most active members. Runner sees each bit during the check-in | Sealed to the one check-in (ECDH, R1 adopted in protocol); summary holds only the count; `rested` is null when total < 3; no pseudonym attached, even for opted-in members | planned (0006, protocol) |
+| H1b | Small groups: with two counts (`low`, `rested`) at total = 3–4, more combinations pin down individuals (e.g. rested = 0 tells everyone that no one rested) | Same k ≥ 3 threshold as `low` | partial: apply R3 (threshold 4, or words below 6) to `rested` too |
+| H2 | **Private rest plan is free text** (`when`/`then`, ≤ 80 chars each), kept indefinitely. On a seized or shared phone it can reveal routine and whereabouts ("When I get back from [place] on Fridays…"), family, names, or the work itself. It also appears on the Battery screen when low, where it can be seen over a shoulder | Encrypted at rest, never shared (0006); stored in the `docs` store, so `wipe()` clears it **(verify once built)** | planned (0006); **recommended limits below** |
+| H3 | Rest-days line on screen gives a glimpse of routine | Count only, no dates; derived from records already on the phone | accepted |
+
+Recommended for H2 (UI + history):
+- **Suggestions first.** Show the picker from [covenant-prompts.md](covenant-prompts.md#rest-plans-and-reminders) and put *Write my own* second.
+- **Hint on the free-text fields:** *"Keep it about you: how you feel and what you'll do. No names or places."*
+- **Soft check, no blocking:** if the text contains a digit or a capitalised word after the first one, show the hint again ("Leave out names, places and times"). Never store what triggered it.
+- **Decoy profile** (item 9) gets its own harmless plan, so the plan's presence doesn't give the real profile away.
+- **Covered by panic wipe and by *Start fresh*?** Wipe: yes, via `docs`. Start fresh is team-only and should leave the personal plan alone. Say so in the UI.
+
 ## Open questions for the activist
 1. How often are phones actually searched at roadblocks or on arrest, and are people forced to unlock the phone, specific apps, or both?
 2. Would a decoy passphrase be believable and usable under pressure, or does it add risk if discovered?
@@ -208,3 +225,5 @@ In priority order. None rewrites the protocol file; owners decide.
 14. Would teams use "Start fresh" after an arrest, or is re-inviting everyone in person too hard?
 15. Is sharing a `low` band with the whole group culturally comfortable, or would people prefer to tell only the runner?
 16. How small are real teams? If most are 3–5 people, the aggregate count reveals individuals (T9).
+17. Humane design: does "Out and about" / "Desk work" sound natural for `action` / `admin`, and in Shona and Ndebele?
+18. Is "rest is resistance" known or used by teams you work with? Would it help in training, or is it too risky even off the phone?
