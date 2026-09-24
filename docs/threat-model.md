@@ -95,12 +95,12 @@ Status: **done** = in code on `main`; **planned** = accepted in a decision recor
 | 12 | Network observer sees the domain | Neutral domain name; consider a shared/common host domain **(verify options)** | proposed | infra |
 | 13 | Phone number = real identity (SIM registration) | **No phone-number identity**, no SMS, no email; team membership only by in-person key exchange | proposed | infra |
 | 14 | Leaked schedule from records | No exact timestamps (date + day-part), durations rounded to 30 min; **coarse times** everywhere including shares | planned (record format) | history |
-| 15 | Leaked team schedule / infiltrator holds a share | Shares carry near-term role coverage only (48–72h, day-parts, expiring); never rest, battery or history ([0002](decisions/0002-personal-battery-on-device.md)) | planned (0002) | infra |
+| 15 | Leaked team schedule / infiltrator holds a share | v1 teams share no schedule or roles at all: only an aggregate low count and opt-in `ok`/`low` bands, expiring after 48h ([0005](decisions/0005-teams-status-covenant.md)); see [Teams (0005)](#teams-0005) | planned (0005) | history, infra |
 | 16 | Share link found in a seized WhatsApp chat | Share encrypted, key in URL fragment, short expiry, no names; prefer QR shown in person | proposed ([ideas](ideas.md)) | infra |
 | 17 | Role names prove organisation (PVO / Patriotic Act) | Teams choose their own role labels; defaults are neutral ("Role A", "Contact", "Support") | proposed | UI |
 | 18 | Diary as dossier / online speech offences | No free text, no locations, no names in records | planned (record format) | history |
 | 19 | Activity type labels incriminate (e.g. "action") | Neutral display labels; keep internal code values out of the UI | proposed | UI, history |
-| 20 | Individual state leaks to team | Battery on-device only; team sees "<role> needs cover", never why | planned (0002) | UI |
+| 20 | Individual state leaks to team | Battery level and history never leave the device; only an opt-in `ok`/`low` band, off by default ([0005](decisions/0005-teams-status-covenant.md)) | planned (0005) | UI, history |
 | 21 | Shared phone notifications | No notifications in v1; if added later, content-free | proposed | UI |
 
 ## Residual risks we can NOT solve
@@ -134,6 +134,63 @@ Status: **done** = in code on `main`; **planned** = accepted in a decision recor
 - App shell size budget (target < 150 KB) **(verify target with UI)**.
 - Share format: encrypted, fragment key, expiry, no names, no phone numbers; QR works fully offline.
 
+## Teams (0005)
+Reviews [0005](decisions/0005-teams-status-covenant.md) and [team-protocol.md](team-protocol.md). Teams move us from "one phone, one person" to "one phone holds something about everyone". The core fact: **every member phone holds the team key, and the key never changes (v1).** So one seized-and-unlocked phone, one infiltrator or one person who left can read every team QR code they can see or photograph, now or later.
+
+### New assets
+| Asset | Where it lives | Who can read it |
+|---|---|---|
+| Team key (AES-256) | Every member phone, invite QR | Any member, anyone with an unlocked member phone, anyone with invite QR + spoken code |
+| Covenant text + team name (free text) | Every member phone, indefinitely | Same as the key |
+| Latest summary: team size present, low count, opted-in pseudonyms + band, date | Every member phone, 48h | Same as the key |
+| Individual `low` bit (all members, opt-in or not) | Status QR during a check-in | The runner, **and any key holder who photographs the QR** (sealed with the team key) |
+| Invite QR + spoken join code | Leader's screen, the room | Anyone who sees the QR and hears the code |
+| The fact a group met | Summary `date`, the check-in itself | Anyone with an unlocked phone; anyone watching the room |
+
+### Threats and mitigations
+Status as in the table above; **recommended** = proposed here, not yet agreed.
+
+| # | Threat | Mitigation | Status |
+|---|---|---|---|
+| T1 | Member phone seized and unlocked (coerced) | Summary expires after 48h; no history of past check-ins; team doc encrypted at rest; panic wipe clears `docs` store | planned (0005, protocol) |
+| T2 | …and the key on it decrypts QR photos taken before or after (CCTV, a phone camera at a check-in) | None in v1: key is static. See R1 (status forward secrecy) and R2 (start-fresh rotation) | **gap** |
+| T3 | Infiltrator joins | Joining needs physical presence + spoken code; covenant as a social gate. An infiltrator then sees summaries and opted-in bands — never levels, activities or schedules | planned (0005) |
+| T4 | Infiltrator (or any member) photographs status QRs and reads everyone's `low` bit, including people who did not opt in | None: status QRs are sealed with the team key everyone holds | **gap — R1** |
+| T5 | Invite QR photographed | Sealed with ~50-bit join code, PBKDF2 600k: offline guessing infeasible | planned (protocol) |
+| T6 | Invite QR photographed **and** code overheard | Equals handing over the team key forever. Mitigate by R4 (short display, one invite per person) | partial |
+| T7 | Person who left, or was removed, keeps the key | None in v1 ("rotation → future decision") | **gap — R2** |
+| T8 | Check-in runner sees each member's `low` bit | Accepted in 0005 ("same as asking out loud"); snapshots discarded after Finish | accepted |
+| T9 | Small-group aggregate reveals individuals. At total = 3, low = 0 or 3 tells everyone each person's state; two check-ins on one day with different people reveal the difference | Hidden when total < 3 | partial — R3 |
+| T10 | Team size and meeting date on a seized phone (`total`, `date`, `expires`) prove a group of N met on a given day | 48h expiry | residual — R6 |
+| T11 | Covenant / team name typed in activist terms is the most incriminating text on the phone, kept indefinitely on every member phone | None in protocol (free text, ≤200 / ≤80 chars) | **gap — R5** |
+| T12 | Pseudonyms chosen as real names or known nicknames | None | **gap — R7** |
+| T13 | Paste fallback moves codes into WhatsApp/SMS/clipboard history, where any key holder can read them long after 48h (expiry is only enforced by our app) | Neutral prefixes (`j1`/`s1`/`c1`), no app name in QR text | partial — R8 |
+| T14 | Key holder forges a summary or stuffs a check-in with extra snapshots | Nonce de-duplication, teamId + date checks | residual (integrity, low harm) — runner sees scan count vs people in the room |
+| T15 | UI labels one person as "leader"/"admin", marking the organiser on their phone | Protocol stores no role; only UI wording matters | **recommended** — R9 |
+
+### Recommended protocol changes before shipping
+In priority order. None rewrites the protocol file; owners decide.
+
+- **R1 — Seal status snapshots to the check-in, not the team (fixes T2, T4).** Runner taps *Run check-in* → shows a *start* QR (kind `k`, sealed with the team key) holding a fresh ECDH P-256 public key. Each member scans it; their phone derives a shared AES-GCM key from its own fresh ECDH pair (WebCrypto, no dependency) and seals `s` to it, including its own public key. On *Finish* the runner's private key is deleted. Result: only the runner can read statuses, and only during the check-in; photos of status QRs are useless afterwards, even to someone who later gets the team key. Cost: one extra scan per member. (Summary stays on the team key so everyone can read it.)
+- **R2 — "Start fresh" as v1 rotation (fixes T7, limits T2).** A one-tap flow: create a new team with the same covenant, new key and id; delete the old team; re-invite everyone in person. Uses existing `createTeam`/invite. UI advice: use it after any member is arrested, loses their phone, or leaves on bad terms.
+- **R3 — Coarse aggregate for small groups (limits T9).** Raise the threshold to **4**, or show words not numbers below 6 (e.g. "none / a few / many of us are running low") **(team decision)**. Everyone present at two check-ins on one day can still compare them; advise one check-in per day.
+- **R4 — Invite handling (limits T6).** Auto-hide the invite QR after 2 min and on leaving the screen; new join code each time it is shown (already); show the code on the inviter's screen only on tap, so it is spoken, not left visible next to the QR; one invite per newcomer.
+- **R5 — Covenant and name stay neutral (limits T11).** Show the placeholder copy in [covenant-prompts.md](covenant-prompts.md) as defaults and hints; add a one-line hint under the fields ("Write about how you look after each other, not about your work"). Consider not storing the covenant on member phones after joining: show it at join, keep only a hash to confirm it matches **(team decision — trades culture visibility for safety)**.
+- **R6 — Minimise dates and size in the stored summary (limits T10).** Drop `date` from the stored copy (keep `expires` only), show "earlier today / yesterday" in UI. Consider storing only the bucket from R3 instead of `total`.
+- **R7 — Generated pseudonyms by default (fixes T12).** Offer a random pick from a neutral word list (birds, trees); editable, with a hint "not your real name or nickname".
+- **R8 — No copy/share buttons (limits T13).** Status, summary and invite codes are shown as QR only; the paste field accepts input but the app never offers to copy or share a code. Warn in the paste fallback: "Don't send this in a chat."
+- **R9 — Neutral roles in UI (fixes T15).** No "leader", "admin" or "founder" labels; "started this group" is not stored or shown after creation. "Run check-in" is fine: anyone can do it.
+- **R10 — Consent text for opt-in band.** When turning on *Share my status*: "Everyone in this group — and anyone who gets into their phone — will see 'ok' or 'low' next to your name for 2 days."
+
+### Residual risks (teams)
+- **The check-in is itself observable.** A group holding phones up to each other is a gathering; the app cannot hide that people met.
+- **Any member is a full-access member.** v1 has no roles or permissions; an infiltrator sees exactly what everyone sees until the team starts fresh.
+- **Coerced member reveals everything they know**, with or without the phone: who is in the group, who opted in, the covenant.
+- **Pseudonyms are linkable in person.** In a small group everyone knows who "Heron" is; pseudonyms protect only against someone who has the phone but not the people.
+- **Runner knowledge.** The runner learns everyone's `low` bit at every check-in; R1 limits it to the runner, not below.
+- **Forged or stuffed summaries** from a key holder can mislead the team (T14).
+- **PBKDF2 600k on low-end phones** may take several seconds per join **(verify timing on a target phone)**.
+
 ## Open questions for the activist
 1. How often are phones actually searched at roadblocks or on arrest, and are people forced to unlock the phone, specific apps, or both?
 2. Would a decoy passphrase be believable and usable under pressure, or does it add risk if discovered?
@@ -147,3 +204,7 @@ Status: **done** = in code on `main`; **planned** = accepted in a decision recor
 10. Is 14 days of history too much? Would 7 days still make the battery useful?
 11. Are there trusted local digital-security organisations we should ask to review this (without sharing it publicly)?
 12. Is infiltration of teams a documented pattern we can cite, or only anecdotal?
+13. Teams: is a physical check-in (people scanning each other's phones) safe to do in the places teams meet, or does it draw attention?
+14. Would teams use "Start fresh" after an arrest, or is re-inviting everyone in person too hard?
+15. Is sharing a `low` band with the whole group culturally comfortable, or would people prefer to tell only the runner?
+16. How small are real teams? If most are 3–5 people, the aggregate count reveals individuals (T9).
