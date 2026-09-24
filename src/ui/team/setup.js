@@ -1,5 +1,5 @@
 // No team yet: start one (write the covenant) or join one (invite QR + spoken join code + agree).
-import { createTeam, joinFromInvite } from '../../team/model.js';
+import { createTeam, joinFromInvite, suggestPseudonym } from '../../team/model.js';
 import { kindOf, normalizeJoinCode, openWithCode } from '../../share/codec.js';
 import t from '../strings/en.js';
 import { h, heading, errorBox, busy, nextId } from '../dom.js';
@@ -24,7 +24,18 @@ function textField({ label, hint, maxlength, multiline = false, placeholder, aut
   return { wrap, input };
 }
 
-const pseudonymField = () => textField({ label: t.team.start.pseudonym, hint: t.team.start.pseudonymHint, maxlength: 20, autocomplete: 'nickname' });
+// Pre-filled from a neutral word list so people don't reach for their real name.
+function pseudonymField() {
+  const field = textField({ label: t.team.start.pseudonym, hint: t.team.start.pseudonymHint, maxlength: 20 });
+  field.input.value = suggestPseudonym();
+  const another = h('button', { type: 'button', class: 'link-button', text: t.team.start.suggestAnother });
+  another.addEventListener('click', () => {
+    field.input.value = suggestPseudonym();
+    field.input.focus();
+  });
+  field.wrap.append(another);
+  return field;
+}
 
 function fail(error, message, input) {
   error.textContent = message;

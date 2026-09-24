@@ -630,12 +630,6 @@ h4 {
   height: auto;
 }
 
-.code-text {
-  font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
-  word-break: break-all;
-}
-
 .join-code {
   text-align: center;
 }

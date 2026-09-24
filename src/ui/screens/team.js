@@ -2,7 +2,7 @@
 import * as store from '../../store/index.js';
 import t from '../strings/en.js';
 import { h } from '../dom.js';
-import { stopAllScans } from '../team/scanner.js';
+import { leaveAll } from '../team/session.js';
 import * as setup from '../team/setup.js';
 import * as teamHome from '../team/home.js';
 import * as exchange from '../team/exchange.js';
@@ -12,8 +12,8 @@ const VIEWS = {
   start: setup.start,
   join: setup.join,
   home: teamHome.home,
-  status: exchange.status,
   checkin: exchange.checkin,
+  joinCheckin: exchange.joinCheckin,
   scanSummary: exchange.scanSummary,
   invite: exchange.invite,
 };
@@ -34,7 +34,7 @@ export async function render(ctx) {
       api.team = null;
     },
     async go(name, arg) {
-      stopAllScans();
+      leaveAll();
       const mine = ++token;
       let node;
       try {
