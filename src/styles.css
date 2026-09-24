@@ -394,7 +394,7 @@ select {
   position: fixed;
   inset: auto 0 0 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: var(--surface);
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
@@ -410,8 +410,8 @@ select {
   border: 0;
   border-radius: 0;
   background: none;
-  font-size: 0.95rem;
-  padding: 8px 4px;
+  font-size: 0.85rem;
+  padding: 8px 2px;
   border-top: 3px solid transparent;
 }
 
@@ -445,4 +445,212 @@ select {
   .battery-fill {
     transition: none;
   }
+}
+
+/* Team */
+
+.link-button {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+textarea,
+input[type='text'] {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+textarea {
+  resize: vertical;
+}
+
+.plain {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.plain legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.plain .hint {
+  margin: 0;
+}
+
+.commitments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.commitment {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.commitment label {
+  font-weight: 400;
+}
+
+.row-input {
+  display: flex;
+  gap: 8px;
+}
+
+.row-input input {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-input .remove {
+  flex: none;
+  width: var(--tap);
+  padding: 0;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.check input {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.card details,
+details.card > summary {
+  cursor: pointer;
+}
+
+details.card > summary {
+  font-weight: 600;
+  min-height: 32px;
+}
+
+details.card[open] > summary {
+  margin-bottom: 12px;
+}
+
+.covenant ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.covenant li + li {
+  margin-top: 4px;
+}
+
+.covenant-purpose {
+  font-style: italic;
+}
+
+h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.summary-count {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.statuses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.band {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.band-low {
+  border-left: 4px solid var(--level-low);
+}
+
+.band-text {
+  color: var(--muted);
+}
+
+.scanner-video {
+  width: 100%;
+  max-height: 60vh;
+  border-radius: var(--radius);
+  background: #000;
+}
+
+.scan-count {
+  font-weight: 600;
+  margin: 0;
+}
+
+/* QR codes are always dark-on-light so cameras can read them in dark mode. */
+.qr-frame {
+  align-self: center;
+  width: min(100%, 320px);
+  padding: 16px;
+  background: #fff;
+  border-radius: var(--radius);
+}
+
+.qr {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.join-code {
+  text-align: center;
+}
+
+.join-code .hint {
+  margin: 0;
+}
+
+.join-code-value {
+  font-family: ui-monospace, monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

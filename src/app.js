@@ -2,14 +2,16 @@ import * as store from './store/index.js';
 import t from './ui/strings/en.js';
 import { h } from './ui/dom.js';
 import { show, clear } from './ui/view.js';
+import { leaveAll, hideAll } from './ui/team/session.js';
 import * as unlock from './ui/screens/unlock.js';
 import * as home from './ui/screens/home.js';
 import * as log from './ui/screens/log.js';
 import * as recent from './ui/screens/recent.js';
+import * as team from './ui/screens/team.js';
 import * as settings from './ui/screens/settings.js';
 
 const AUTO_LOCK_MS = 2 * 60 * 1000;
-const SCREENS = { home, log, recent, settings };
+const SCREENS = { home, log, recent, team, settings };
 
 const nav = document.getElementById('nav');
 const status = document.getElementById('status');
@@ -51,6 +53,7 @@ const ctx = {
 };
 
 function go(name) {
+  leaveAll();
   if (!store.isUnlocked()) return showUnlock();
   nav.hidden = false;
   for (const button of navButtons) {
@@ -66,6 +69,7 @@ function showUnlock() {
 }
 
 function lockApp(message) {
+  leaveAll();
   store.lock();
   clear();
   showUnlock();
@@ -78,6 +82,7 @@ let hiddenAt = 0;
 let hiddenTimer = 0;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
+    hideAll(); // camera off and invite hidden whenever the page is in the background
     hiddenAt = Date.now();
     hiddenTimer = setTimeout(() => store.isUnlocked() && lockApp(), AUTO_LOCK_MS);
     return;
