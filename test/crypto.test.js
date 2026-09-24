@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveKey, randomSalt, encrypt, decrypt, makeVerifier, checkVerifier } from '../src/store/crypto.js';
 
-// Fewer iterations keep tests fast; production default (600k) is covered in store.test.mjs.
+// Fewer iterations keep tests fast; production default (600k) is covered in store.test.js.
 const ITER = 1000;
 
 test('round-trips a record and uses a fresh IV each time', async () => {
