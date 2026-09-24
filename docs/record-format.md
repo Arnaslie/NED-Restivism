@@ -27,3 +27,11 @@ Owner: history engineer. Contract for UI, battery and storage. Records are only 
 
 ## Mock data
 [`mock/activities.json`](../mock/activities.json) holds 14 days of synthetic records for one fictional user, including mock cortisol. Mock cortisol values are illustrative only — not clinically meaningful. Never replace them with real readings in the repo.
+
+## Validation rules (enforced by `src/store/record.js`)
+- Only the fields above are accepted; anything else (location, notes, names, times…) is rejected, including inside `biomarkers`.
+- `date`: a real calendar date, `YYYY-MM-DD`. `dayPart` and `type`: one of the listed values.
+- `durationMin`: integer, positive multiple of 30, at most 1440. `intensity`: integer 1–3.
+- `selfCheck` (optional): integer 1–5. `biomarkers` (optional): `source` is `mock` or `manual`, `cortisolNmolL` a number 0–1000.
+- `id` and `v` are assigned by `save()`, never by the caller.
+- Retention: a record is purged when its `date` is more than 14 days before the device's local date (today − 14 is kept).
