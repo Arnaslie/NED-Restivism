@@ -5,6 +5,8 @@ import t from '../strings/en.js';
 import { h, heading, errorBox, busy, nextId } from '../dom.js';
 import { scanner } from './scanner.js';
 import { covenantView } from './home.js';
+import { planForm } from '../plan.js';
+import * as store from '../../store/index.js';
 
 const MAX_COMMITMENTS = 5;
 
@@ -124,7 +126,7 @@ export async function start(api) {
       return;
     }
     api.announce(s.created);
-    api.go('home');
+    api.go('plan');
   });
 
   return h('section', { class: 'screen' }, back(api, 'none'), heading(s.heading), h('p', { text: s.intro }), form);
@@ -215,7 +217,7 @@ export async function join(api) {
       }
       invite = null;
       api.announce(s.joined);
-      api.go('home');
+      api.go('plan');
     });
     return [
       h('p', { text: s.covenantStep }),
@@ -226,4 +228,26 @@ export async function join(api) {
 
   body.append(...scanStep());
   return section;
+}
+
+// Optional step after starting or joining a team: a private if-then rest plan (decision 0006).
+// Skipped when a plan already exists.
+export async function plan(api) {
+  const existing = await store.getPlan().catch(() => null);
+  if (existing) return api.go('home');
+  const p = t.plan;
+  return h(
+    'section',
+    { class: 'screen stack' },
+    heading(p.heading),
+    h('p', { text: p.intro }),
+    planForm({
+      plan: null,
+      onSaved: () => {
+        api.announce(p.saved);
+        api.go('home');
+      },
+      secondary: { label: p.skip, onClick: () => api.go('home') },
+    }),
+  );
 }

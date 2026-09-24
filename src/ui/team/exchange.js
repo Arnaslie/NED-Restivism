@@ -1,6 +1,7 @@
 // In-person QR exchanges: run a check-in, join a check-in, scan a summary, invite.
 import * as store from '../../store/index.js';
 import { computeBattery } from '../../battery.js';
+import { restedThisWeek } from '../../rest.js';
 import { makeSnapshot, summarize, acceptSummary, teamCryptoKey, invitePayload } from '../../team/model.js';
 import { sealWithKey, openWithKey, startCheckin, openCheckinStart, sealStatus, sealWithCode, newJoinCode } from '../../share/codec.js';
 import t from '../strings/en.js';
@@ -8,6 +9,7 @@ import { h, heading, busy } from '../dom.js';
 import { scanner } from './scanner.js';
 import { qrDisplay } from './code.js';
 import { onLeave } from './session.js';
+import { freshStart } from './home.js';
 
 const INVITE_VISIBLE_MS = 2 * 60 * 1000;
 
@@ -15,8 +17,9 @@ const back = (api) => h('button', { type: 'button', class: 'link-button', text: 
 const screen = (api, title, ...children) => h('section', { class: 'screen stack' }, back(api), heading(title), ...children);
 
 async function mySnapshot(team, checkinId) {
-  const battery = computeBattery(await store.list(), new Date());
-  return makeSnapshot(team, battery, checkinId);
+  const records = await store.list();
+  const today = new Date();
+  return makeSnapshot(team, computeBattery(records, today), checkinId, restedThisWeek(records, today));
 }
 
 // Runner: show the start QR, scan statuses, finish into a summary.
@@ -86,7 +89,13 @@ export async function checkin(api) {
     unregister();
     end();
     const title = heading(s.summaryHeading);
-    section.replaceChildren(title, h('p', { text: s.summaryIntro }), qrDisplay(text), h('button', { type: 'button', text: t.team.done, onclick: () => api.go('home') }));
+    section.replaceChildren(
+      title,
+      h('p', { text: s.summaryIntro }),
+      qrDisplay(text),
+      freshStart(),
+      h('button', { type: 'button', text: t.team.done, onclick: () => api.go('home') }),
+    );
     title.focus();
   });
 
@@ -144,7 +153,7 @@ export async function scanSummary(api) {
         if (opened.kind !== 'c' || opened.obj?.teamId !== api.team.id) throw new Error(s.notSummary);
         await api.save(acceptSummary(api.team, opened.obj, new Date()));
         api.announce(s.updated);
-        api.go('home');
+        api.go('home', { fresh: true });
       },
     }),
   );

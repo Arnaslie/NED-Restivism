@@ -11,6 +11,7 @@ const VIEWS = {
   none: setup.none,
   start: setup.start,
   join: setup.join,
+  plan: setup.plan,
   home: teamHome.home,
   checkin: exchange.checkin,
   joinCheckin: exchange.joinCheckin,
