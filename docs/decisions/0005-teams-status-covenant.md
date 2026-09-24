@@ -24,6 +24,6 @@ Protocol, formats and APIs: [team-protocol.md](../team-protocol.md).
 - The person running a check-in briefly sees each member's `low` bit while scanning. The app does not store it; only the summary is kept. This is the same as asking out loud in the room.
 - Any member (or any unlocked member phone) holds the team key and can read start and summary QRs, but not other people's status QRs. People who leave keep the key until the team uses "Start fresh".
 - A seized unlocked phone shows the latest summary for up to 48h: team size, low count, and opted-in pseudonyms with their band.
-- Adds two vendored libraries (first exceptions to "no dependencies" in 0001): a QR encoder and jsQR for scanning, both reviewed and pinned.
+- Adds two vendored libraries (first exceptions to "no dependencies" in 0001): a QR encoder (Nayuki's QR Code generator v1.8.0, MIT, 33 KB) and jsQR for scanning (v1.4.0, Apache-2.0, 257 KB / 57 KB gzipped, only loaded on phones without a native `BarcodeDetector`). Both are reviewed and pinned; provenance and hashes are in [src/vendor/README.md](../../src/vendor/README.md). Still no npm dependencies and no build step.
 - The minimum of 3 for showing the team total was kept on purpose: at exactly 3 people, "0 of 3" or "3 of 3" reveals everyone's state (threat model R3).
 - Out of scope: roles/rota, norm checking, care-lead rotation, automatic key rotation, live sync.

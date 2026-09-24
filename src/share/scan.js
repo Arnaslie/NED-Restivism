@@ -1,16 +1,42 @@
-// Camera QR scanning with the browser's built-in BarcodeDetector. No fallback here:
-// where it is missing, the UI offers paste-the-code instead.
+// Camera QR scanning. Uses the browser's BarcodeDetector when it supports QR codes,
+// otherwise draws frames to an offscreen canvas and decodes them with vendored jsQR.
 
-const POLL_MS = 200; // ~5 detections per second
+const POLL_MS = 200; // ~5 attempts per second
+const MAX_FRAME_PX = 640; // downscale frames for jsQR so low-end phones keep up
 
 export async function isScanSupported() {
-  if (!('BarcodeDetector' in globalThis) || !navigator.mediaDevices?.getUserMedia) return false;
+  return Boolean(globalThis.navigator?.mediaDevices?.getUserMedia);
+}
+
+async function nativeDetectorSupported() {
+  if (!('BarcodeDetector' in globalThis)) return false;
   try {
-    const formats = await BarcodeDetector.getSupportedFormats();
-    return formats.includes('qr_code');
+    return (await BarcodeDetector.getSupportedFormats()).includes('qr_code');
   } catch {
     return false;
   }
+}
+
+// -> async (video) => text | null
+async function makeDetector() {
+  if (await nativeDetectorSupported()) {
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    return async (video) => (await detector.detect(video)).find((c) => c.rawValue)?.rawValue || null;
+  }
+  const { default: jsQR } = await import('../vendor/jsQR.js');
+  const canvas = document.createElement('canvas'); // never attached to the page
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  return async (video) => {
+    const scale = Math.min(1, MAX_FRAME_PX / Math.max(video.videoWidth, video.videoHeight));
+    const w = Math.round(video.videoWidth * scale);
+    const h = Math.round(video.videoHeight * scale);
+    if (!w || !h) return null;
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(video, 0, 0, w, h);
+    // Our QR codes are always dark on light, so skip the inverted pass (halves the work).
+    return jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'dontInvert' })?.data || null;
+  };
 }
 
 // -> { result: Promise<string>, stop() }. `result` resolves with the first QR text seen,
@@ -32,44 +58,41 @@ export function startScan(video) {
 
   const result = new Promise((resolve, reject) => {
     rejectResult = reject;
-    const detector = new BarcodeDetector({ formats: ['qr_code'] });
 
-    async function poll() {
-      if (stopped) return;
-      try {
-        if (video.readyState >= 2) {
-          const codes = await detector.detect(video);
-          const text = codes.find((c) => c.rawValue)?.rawValue;
+    async function run() {
+      const detect = await makeDetector();
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      stream = s;
+      if (stopped) return release();
+      video.setAttribute('playsinline', '');
+      video.muted = true;
+      video.srcObject = s;
+      await video.play();
+
+      async function poll() {
+        if (stopped) return;
+        try {
+          const text = video.readyState >= 2 ? await detect(video) : null;
           if (text && !stopped) {
             stopped = true;
             release();
             resolve(text);
             return;
           }
+        } catch {
+          // A single failed frame is not fatal; try the next one.
         }
-      } catch {
-        // A single failed frame is not fatal; try the next one.
+        if (!stopped) timer = setTimeout(poll, POLL_MS);
       }
-      if (!stopped) timer = setTimeout(poll, POLL_MS);
+      poll();
     }
 
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-      .then(async (s) => {
-        stream = s;
-        if (stopped) return release();
-        video.setAttribute('playsinline', '');
-        video.muted = true;
-        video.srcObject = s;
-        await video.play();
-        poll();
-      })
-      .catch((err) => {
-        if (stopped) return;
-        stopped = true;
-        release();
-        reject(err);
-      });
+    run().catch((err) => {
+      if (stopped) return;
+      stopped = true;
+      release();
+      reject(err);
+    });
   });
   result.catch(() => {}); // callers that never await `result` should not see an unhandled rejection
 

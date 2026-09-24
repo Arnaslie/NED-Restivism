@@ -1,6 +1,8 @@
 // QR text codec for team sharing (docs/team-protocol.md, "Wire format").
 // Text = `<kind>1.<base64url(bytes)>`; plaintext is deflate-raw compressed JSON.
-//   s / c: bytes = iv(12) | AES-GCM ciphertext, team key, additionalData = "s1" / "c1"
+//   k / c: bytes = iv(12) | AES-GCM ciphertext, team key, additionalData = "k1" / "c1"
+//   s:     bytes = memberPub(65) | iv(12) | ciphertext, key = HKDF-SHA256(ECDH(member, runner),
+//          salt = checkinId bytes, info "s1") -> AES-GCM, additionalData = "s1". Only the runner can open it.
 //   j:     bytes = salt(16) | iv(12) | ciphertext, key = PBKDF2-SHA256(join code, salt, 600000)
 // Failures to open throw one generic message so nothing leaks about why.
 
@@ -8,6 +10,9 @@ const PBKDF2_ITERATIONS = 600000;
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
+const PUB_BYTES = 65; // raw uncompressed P-256 point
+const CHECKIN_ID_BYTES = 8;
+const ECDH = { name: 'ECDH', namedCurve: 'P-256' };
 const MAX_PLAINTEXT_BYTES = 64 * 1024; // refuse to inflate anything bigger (decompression bombs)
 
 const KEY_ERROR = 'Not a valid code';
@@ -17,7 +22,7 @@ const CODE_ERROR = 'Wrong code or not an invite';
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const JOIN_CODE_LENGTH = 10;
 const JOIN_CODE_RE = /^[0-9A-HJKMNP-TV-Z]{10}$/;
-const TEXT_RE = /^([jsc])1\.([A-Za-z0-9_-]+)$/;
+const TEXT_RE = /^([jksc])1\.([A-Za-z0-9_-]+)$/;
 
 const enc = new TextEncoder();
 const dec = new TextDecoder('utf-8', { fatal: true });
@@ -108,11 +113,36 @@ async function codeKey(code, salt) {
   );
 }
 
+// ECDH(ourPriv, theirPub) -> HKDF-SHA256(salt = checkinId bytes, info "s1") -> AES-GCM key.
+async function statusKey(privateKey, publicKey, checkinIdBytes) {
+  const shared = await crypto.subtle.deriveBits({ name: 'ECDH', public: publicKey }, privateKey, 256);
+  const base = await crypto.subtle.importKey('raw', shared, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: checkinIdBytes, info: enc.encode('s1') },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+// Throws unless `pub` is a valid raw P-256 public key.
+function importPub(pubBytes) {
+  if (pubBytes.length !== PUB_BYTES) throw new Error('bad public key');
+  return crypto.subtle.importKey('raw', pubBytes, ECDH, true, []);
+}
+
+function checkinIdBytes(checkinId) {
+  const bytes = typeof checkinId === 'string' && /^[A-Za-z0-9_-]+$/.test(checkinId) ? fromBase64url(checkinId) : null;
+  if (!bytes || bytes.length !== CHECKIN_ID_BYTES) throw new Error('bad checkinId');
+  return bytes;
+}
+
 // ---- public API -----------------------------------------------------------------
 
-// kind 's' | 'c', cryptoKey = AES-GCM team key.
+// kind 'k' | 'c', cryptoKey = AES-GCM team key.
 export async function sealWithKey(kind, obj, cryptoKey) {
-  if (kind !== 's' && kind !== 'c') throw new TypeError("kind must be 's' or 'c'");
+  if (kind !== 'k' && kind !== 'c') throw new TypeError("kind must be 'k' or 'c'");
   const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
   const ct = await encryptObj(kind, obj, cryptoKey, iv);
   return `${kind}1.${toBase64url(concat(iv, ct))}`;
@@ -122,12 +152,78 @@ export async function sealWithKey(kind, obj, cryptoKey) {
 export async function openWithKey(text, cryptoKey) {
   try {
     const { kind, bytes } = parseText(text);
-    if (kind === 'j' || bytes.length < IV_BYTES + TAG_BYTES) throw new Error('bad kind');
+    if ((kind !== 'k' && kind !== 'c') || bytes.length < IV_BYTES + TAG_BYTES) throw new Error('bad kind');
     const obj = await decryptObj(kind, cryptoKey, bytes.subarray(0, IV_BYTES), bytes.subarray(IV_BYTES));
     return { kind, obj };
   } catch {
     throw new Error(KEY_ERROR);
   }
+}
+
+// Runner side. Creates a one-time ECDH key pair whose private key never leaves this closure
+// (non-extractable, never stored). `code` is the `k` QR text to show. end() drops the key;
+// openStatus() fails from then on.
+export async function startCheckin(teamCryptoKey, teamId) {
+  if (typeof teamId !== 'string' || !teamId) throw new TypeError('teamId required');
+  const idBytes = crypto.getRandomValues(new Uint8Array(CHECKIN_ID_BYTES));
+  const checkinId = toBase64url(idBytes);
+  const pair = await crypto.subtle.generateKey(ECDH, false, ['deriveBits']);
+  let privateKey = pair.privateKey;
+  const pub = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)));
+  const code = await sealWithKey('k', { v: 1, teamId, checkinId, pub }, teamCryptoKey);
+
+  async function openStatus(text) {
+    try {
+      if (!privateKey) throw new Error('ended');
+      const { kind, bytes } = parseText(text);
+      if (kind !== 's' || bytes.length < PUB_BYTES + IV_BYTES + TAG_BYTES) throw new Error('bad kind');
+      const memberPub = await importPub(bytes.subarray(0, PUB_BYTES));
+      const key = await statusKey(privateKey, memberPub, idBytes);
+      const iv = bytes.subarray(PUB_BYTES, PUB_BYTES + IV_BYTES);
+      const obj = await decryptObj('s', key, iv, bytes.subarray(PUB_BYTES + IV_BYTES));
+      if (obj.teamId !== teamId || obj.checkinId !== checkinId) throw new Error('other check-in');
+      return obj;
+    } catch {
+      throw new Error(KEY_ERROR);
+    }
+  }
+
+  function end() {
+    privateKey = null;
+  }
+
+  return { checkinId, code, openStatus, end };
+}
+
+// Member side: `k` text -> { teamId, checkinId, pub }. Throws Error('Not a valid code') on any failure.
+export async function openCheckinStart(text, teamCryptoKey) {
+  try {
+    const { kind, obj } = await openWithKey(text, teamCryptoKey);
+    const { v, teamId, checkinId, pub } = obj;
+    if (kind !== 'k' || v !== 1 || typeof teamId !== 'string' || !teamId) throw new Error('bad start');
+    checkinIdBytes(checkinId);
+    if (typeof pub !== 'string' || !/^[A-Za-z0-9_-]+$/.test(pub)) throw new Error('bad pub');
+    await importPub(fromBase64url(pub));
+    return { teamId, checkinId, pub };
+  } catch {
+    throw new Error(KEY_ERROR);
+  }
+}
+
+// Member side: seals a status snapshot so only the runner of `start` can open it.
+// A fresh key pair per status; its private key is dropped when this returns.
+export async function sealStatus(snapshot, start) {
+  if (!start || snapshot?.checkinId !== start.checkinId || snapshot?.teamId !== start.teamId) {
+    throw new TypeError('Snapshot does not match this check-in');
+  }
+  const idBytes = checkinIdBytes(start.checkinId);
+  const runnerPub = await importPub(fromBase64url(start.pub));
+  const pair = await crypto.subtle.generateKey(ECDH, false, ['deriveBits']);
+  const memberPub = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey));
+  const key = await statusKey(pair.privateKey, runnerPub, idBytes);
+  const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
+  const ct = await encryptObj('s', snapshot, key, iv);
+  return `s1.${toBase64url(concat(memberPub, iv, ct))}`;
 }
 
 // Seals an invite with a join code (any accepted spelling, see normalizeJoinCode).
@@ -172,7 +268,7 @@ export function normalizeJoinCode(input) {
   return JOIN_CODE_RE.test(code) ? code : null;
 }
 
-// 'j' | 's' | 'c' | null, from the prefix only (does not check the payload).
+// 'j' | 'k' | 's' | 'c' | null, from the prefix only (does not check the payload).
 export function kindOf(text) {
   if (typeof text !== 'string') return null;
   const match = TEXT_RE.exec(text.trim());

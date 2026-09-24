@@ -8,24 +8,28 @@ import {
   newJoinCode,
   normalizeJoinCode,
   kindOf,
+  startCheckin,
+  openCheckinStart,
+  sealStatus,
 } from '../src/share/codec.js';
+import { default as jsQR } from '../src/vendor/jsQR.js';
 import { qrPath } from '../src/share/qr.js';
 import { QrCode } from '../src/vendor/qrcodegen.js';
 
 const teamKey = () => crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 
+const TEAM_ID = 'q5Zk1yX0bH4mS2cP9wT7eA';
 const snapshot = {
   v: 1,
-  teamId: 'q5Zk1yX0bH4mS2cP9wT7eA',
-  date: '2026-09-24',
+  teamId: TEAM_ID,
+  checkinId: 'AAAAAAAAAAA',
   nonce: 'mQ3xT9bLr0A',
   low: true,
   share: { pseudonym: 'Heron', band: 'low' },
 };
 const summary = {
   v: 1,
-  teamId: 'q5Zk1yX0bH4mS2cP9wT7eA',
-  date: '2026-09-24',
+  teamId: TEAM_ID,
   expires: '2026-09-26',
   total: 5,
   low: 2,
@@ -51,41 +55,119 @@ function bulkyText(n, seed) {
   return out.join(' ').slice(0, n);
 }
 
-test('status (s) and summary (c) round-trip with the team key', async () => {
+const generic = { message: 'Not a valid code' };
+
+// A full check-in: runner starts, member opens the start QR and seals a status to it.
+async function checkin(key) {
+  const run = await startCheckin(key, TEAM_ID);
+  const start = await openCheckinStart(run.code, key);
+  const snap = { ...snapshot, checkinId: start.checkinId };
+  return { run, start, snap, s: await sealStatus(snap, start) };
+}
+
+test('start (k) and summary (c) round-trip with the team key', async () => {
   const key = await teamKey();
-  const s = await sealWithKey('s', snapshot, key);
+  const k = await sealWithKey('k', { v: 1, teamId: TEAM_ID, checkinId: 'AAAAAAAAAAA', pub: 'x' }, key);
   const c = await sealWithKey('c', summary, key);
-  assert.match(s, /^s1\.[A-Za-z0-9_-]+$/);
+  assert.match(k, /^k1\.[A-Za-z0-9_-]+$/);
   assert.match(c, /^c1\.[A-Za-z0-9_-]+$/);
-  assert.deepEqual(await openWithKey(s, key), { kind: 's', obj: snapshot });
+  assert.equal((await openWithKey(k, key)).kind, 'k');
   assert.deepEqual(await openWithKey(c, key), { kind: 'c', obj: summary });
-  assert.notEqual(await sealWithKey('s', snapshot, key), s, 'fresh IV each time');
-  assert.ok(!s.includes('Heron') && !c.includes('Heron'), 'no plaintext in the QR text');
+  assert.notEqual(await sealWithKey('c', summary, key), c, 'fresh IV each time');
+  assert.ok(!c.includes('Heron'), 'no plaintext in the QR text');
 });
 
-test('sealWithKey only accepts s and c', async () => {
+test('sealWithKey only accepts k and c; openWithKey refuses s and j', async () => {
   const key = await teamKey();
-  await assert.rejects(sealWithKey('j', invite, key), TypeError);
-  await assert.rejects(sealWithKey('x', invite, key), TypeError);
-});
-
-test('wrong key, tampering, garbage and invites all fail with the generic message', async () => {
-  const key = await teamKey();
-  const s = await sealWithKey('s', snapshot, key);
-  const generic = { message: 'Not a valid code' };
-  await assert.rejects(openWithKey(s, await teamKey()), generic);
-  const flipped = s.slice(0, -2) + (s.at(-2) === 'A' ? 'B' : 'A') + s.at(-1);
-  await assert.rejects(openWithKey(flipped, key), generic);
-  for (const bad of ['', 's1.', 's1.!!!', 'x1.abcd', 'hello', null, 42, s.slice(0, 20)]) {
-    await assert.rejects(openWithKey(bad, key), generic);
-  }
+  for (const kind of ['s', 'j', 'x']) await assert.rejects(sealWithKey(kind, summary, key), TypeError);
+  const { s } = await checkin(key);
+  await assert.rejects(openWithKey(s, key), generic);
   await assert.rejects(openWithKey(await sealWithCode(invite, newJoinCode()), key), generic);
 });
 
-test('a status cannot be passed off as a summary (kind is authenticated)', async () => {
+test('check-in: start QR opens to teamId, checkinId and runner public key', async () => {
   const key = await teamKey();
-  const s = await sealWithKey('s', snapshot, key);
-  await assert.rejects(openWithKey('c' + s.slice(1), key), { message: 'Not a valid code' });
+  const run = await startCheckin(key, TEAM_ID);
+  assert.match(run.code, /^k1\./);
+  assert.equal(kindOf(run.code), 'k');
+  const start = await openCheckinStart(run.code, key);
+  assert.equal(start.teamId, TEAM_ID);
+  assert.equal(start.checkinId, run.checkinId);
+  assert.equal(Buffer.from(start.pub, 'base64url').length, 65);
+  await assert.rejects(openCheckinStart(run.code, await teamKey()), generic);
+  const c = await sealWithKey('c', summary, key);
+  await assert.rejects(openCheckinStart(c, key), generic, 'a summary is not a start');
+  const badPub = await sealWithKey('k', { v: 1, teamId: TEAM_ID, checkinId: run.checkinId, pub: 'AAAA' }, key);
+  await assert.rejects(openCheckinStart(badPub, key), generic);
+});
+
+test('check-in: status (s) round-trips to the runner only', async () => {
+  const key = await teamKey();
+  const { run, snap, s, start } = await checkin(key);
+  assert.match(s, /^s1\.[A-Za-z0-9_-]+$/);
+  assert.ok(!s.includes('Heron'));
+  assert.deepEqual(await run.openStatus(s), snap);
+  assert.notEqual(await sealStatus(snap, start), s, 'fresh member key pair each time');
+  // Check-in B (same team, same key) cannot open a status sealed to check-in A.
+  const other = await startCheckin(key, TEAM_ID);
+  await assert.rejects(other.openStatus(s), generic);
+});
+
+test('check-in: after end() openStatus fails', async () => {
+  const key = await teamKey();
+  const { run, s } = await checkin(key);
+  assert.ok(await run.openStatus(s));
+  run.end();
+  await assert.rejects(run.openStatus(s), generic);
+});
+
+test('check-in: relabelled, tampered and mismatched statuses fail', async () => {
+  const key = await teamKey();
+  const { run, s, start } = await checkin(key);
+  // s relabelled as c (or k) is rejected by both the runner and team-key opening.
+  for (const kind of ['c', 'k']) {
+    await assert.rejects(openWithKey(kind + s.slice(1), key), generic);
+    await assert.rejects(run.openStatus(kind + s.slice(1)), generic);
+  }
+  // A summary relabelled as a status.
+  await assert.rejects(run.openStatus('s' + (await sealWithKey('c', summary, key)).slice(1)), generic);
+  // Member public key tampered: flip one byte of the point (keep it on the curve or not, both fail).
+  const bytes = Buffer.from(s.slice(3), 'base64url');
+  for (const i of [1, 40, 64]) {
+    const t = Buffer.from(bytes);
+    t[i] ^= 1;
+    await assert.rejects(run.openStatus('s1.' + t.toString('base64url')), generic, `pub byte ${i}`);
+  }
+  // Swap in a different valid member public key.
+  const other = Buffer.from((await sealStatus({ ...snapshot, checkinId: start.checkinId }, start)).slice(3), 'base64url');
+  const swapped = Buffer.concat([other.subarray(0, 65), bytes.subarray(65)]);
+  await assert.rejects(run.openStatus('s1.' + swapped.toString('base64url')), generic);
+  // Ciphertext tampered, truncated, garbage.
+  const flipped = s.slice(0, -2) + (s.at(-2) === 'A' ? 'B' : 'A') + s.at(-1);
+  for (const bad of [flipped, s.slice(0, 80), 's1.', '', null, 'hello']) {
+    await assert.rejects(run.openStatus(bad), generic);
+  }
+  // A snapshot for another check-in or team is refused when sealing.
+  await assert.rejects(sealStatus({ ...snapshot, checkinId: 'AAAAAAAAAAA' }, start), TypeError);
+  await assert.rejects(sealStatus({ ...snapshot, checkinId: start.checkinId, teamId: 'x' }, start), TypeError);
+});
+
+test('wrong key, tampering and garbage fail with the generic message', async () => {
+  const key = await teamKey();
+  const c = await sealWithKey('c', summary, key);
+  await assert.rejects(openWithKey(c, await teamKey()), generic);
+  const flipped = c.slice(0, -2) + (c.at(-2) === 'A' ? 'B' : 'A') + c.at(-1);
+  await assert.rejects(openWithKey(flipped, key), generic);
+  for (const bad of ['', 'c1.', 'c1.!!!', 'x1.abcd', 'hello', null, 42, c.slice(0, 20)]) {
+    await assert.rejects(openWithKey(bad, key), generic);
+  }
+});
+
+test('a start cannot be passed off as a summary (kind is authenticated)', async () => {
+  const key = await teamKey();
+  const { run } = await checkin(key);
+  await assert.rejects(openWithKey('c' + run.code.slice(1), key), generic);
+  await assert.rejects(openWithKey('k' + (await sealWithKey('c', summary, key)).slice(1), key), generic);
 });
 
 test('invite (j) round-trips with the join code, in any typed spelling', async () => {
@@ -103,7 +185,7 @@ test('wrong join code or a non-invite fails with the generic message', async () 
   const generic = { message: 'Wrong code or not an invite' };
   await assert.rejects(openWithCode(j, '7KQ2-M9XD-41'), generic);
   await assert.rejects(openWithCode(j, 'not a code'), generic);
-  await assert.rejects(openWithCode(await sealWithKey('s', snapshot, key), '7KQ2-M9XD-40'), generic);
+  await assert.rejects(openWithCode(await sealWithKey('c', summary, key), '7KQ2-M9XD-40'), generic);
   await assert.rejects(openWithCode('j1.AAAA', '7KQ2-M9XD-40'), generic);
   await assert.rejects(openWithCode('s' + j.slice(1), '7KQ2-M9XD-40'), generic);
 });
@@ -138,6 +220,7 @@ test('newJoinCode: XXXX-XXXX-XX in Crockford base32, normalises to itself, ~50 b
 
 test('kindOf', () => {
   assert.equal(kindOf('s1.abc'), 's');
+  assert.equal(kindOf('k1.abc'), 'k');
   assert.equal(kindOf('c1.abc'), 'c');
   assert.equal(kindOf('j1.abc'), 'j');
   assert.equal(kindOf(' c1.abc\n'), 'c');
@@ -207,4 +290,39 @@ test('QR encoder: matrix has the right size, finder patterns and quiet zone', ()
   for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) if (qr.getModule(x, y)) dark++;
   assert.equal(cells.length, dark);
   assert.ok(cells.every(([x, y]) => x >= 4 && y >= 4 && x < size - 4 && y < size - 4));
+});
+
+// Rasterise a QR (with quiet zone) to RGBA, as a camera frame would arrive at jsQR.
+function rasterise(text, scale = 3) {
+  const qr = QrCode.encodeText(text, QrCode.Ecc.MEDIUM);
+  const q = 4;
+  const w = (qr.size + 2 * q) * scale;
+  const px = new Uint8ClampedArray(w * w * 4).fill(255);
+  for (let y = 0; y < w; y++) {
+    for (let x = 0; x < w; x++) {
+      if (qr.getModule(Math.floor(x / scale) - q, Math.floor(y / scale) - q)) {
+        const o = (y * w + x) * 4;
+        px[o] = px[o + 1] = px[o + 2] = 0;
+      }
+    }
+  }
+  return { px, w };
+}
+
+test('QR round trip: encoder output decodes with vendored jsQR for every kind', async (t) => {
+  const key = await teamKey();
+  const { run, s } = await checkin(key);
+  const texts = {
+    k: run.code,
+    s,
+    c: await sealWithKey('c', summary, key),
+    j: await sealWithCode(invite, newJoinCode()),
+    'c 1.3 KB incompressible': await sealWithKey('c', { pad: toB64(crypto.getRandomValues(new Uint8Array(975))) }, key),
+  };
+  for (const [label, text] of Object.entries(texts)) {
+    const { px, w } = rasterise(text);
+    const found = jsQR(px, w, w, { inversionAttempts: 'dontInvert' });
+    assert.equal(found?.data, text, `${label} decodes`);
+    t.diagnostic(`${label}: ${text.length} chars, QR version ${qrPath(text).version}`);
+  }
 });
