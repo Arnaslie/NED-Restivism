@@ -22,5 +22,5 @@ Protocol, formats and APIs: [team-protocol.md](../team-protocol.md).
 - The person running a check-in briefly sees each member's `low` bit while scanning. The app does not store it; only the summary is kept. This is the same as asking out loud in the room.
 - Any member (or any unlocked member phone) holds the team key and can read the team's QR codes. No key rotation in this version: people who leave keep the key. Rotation → future decision.
 - A seized unlocked phone shows the latest summary for up to 48h: team size, low count, and opted-in pseudonyms with their band.
-- Adds one vendored QR-encoding library (first exception to "no dependencies" in 0001), reviewed and pinned. Scanning uses the browser's built-in `BarcodeDetector` where available, with a paste-the-code fallback.
+- Adds one vendored QR-encoding library (first exception to "no dependencies" in 0001), reviewed and pinned: Nayuki's QR Code generator v1.8.0 (MIT) in `src/vendor/`, provenance and hashes in [src/vendor/README.md](../../src/vendor/README.md). Still no npm dependencies and no build step. Scanning uses the browser's built-in `BarcodeDetector` where available, with a paste-the-code fallback.
 - Out of scope: roles/rota, norm checking, care-lead rotation, key rotation, live sync.

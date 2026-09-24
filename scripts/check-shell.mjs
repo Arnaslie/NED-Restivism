@@ -21,6 +21,7 @@ function walk(dir) {
   if (!existsSync(abs)) return [];
   return readdirSync(abs)
     .filter((name) => !name.startsWith('.')) // skip .DS_Store, .gitkeep etc.
+    .filter((name) => !name.endsWith('.md')) // docs (e.g. src/vendor/README.md) are not needed offline
     .flatMap((name) => {
       const rel = toPosix(join(dir, name));
       return statSync(join(root, rel)).isDirectory() ? walk(rel) : [rel];
